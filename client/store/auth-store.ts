@@ -1,14 +1,22 @@
 import { create } from "zustand";
 
-import { clearTokens, setTokens } from "@/lib/auth/tokens";
-import { AuthResponse, AuthState } from "@/types/auth";
+import {
+  clearTokens,
+  getAccessToken,
+  setTokens,
+} from "@/lib/auth/tokens";
+
+import {
+  AuthResponse,
+  AuthState,
+} from "@/types/auth";
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
 
-  token: null,
+  token: getAccessToken() ?? null,
 
-  authenticated: false,
+  authenticated: Boolean(getAccessToken()),
 
   loading: false,
 
@@ -16,9 +24,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     setTokens(data.token, data.refreshToken);
 
     set({
-      user: data.user,
       token: data.token,
       authenticated: true,
+      user: data.user,
       loading: false,
     });
   },
@@ -27,9 +35,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     clearTokens();
 
     set({
-      user: null,
       token: null,
       authenticated: false,
+      user: null,
       loading: false,
     });
   },

@@ -7,6 +7,7 @@ import AOSProvider from "@/providers/AOSProvider";
 
 import ScrollProgress from "@/components/ui/ScrollProgress";
 import CursorSpotlight from "@/components/ui/CursorSpotlight";
+import AuthProvider from "@/providers/AuthProvider";
 
 const geistSans = Geist({
   subsets: ["latin"],
@@ -43,6 +44,9 @@ export default function RootLayout({
         <AOSProvider>
           {children}
         </AOSProvider>
+        <AuthProvider>
+  {children}
+</AuthProvider>
       </body>
     </html>
   );

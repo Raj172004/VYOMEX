@@ -1,6 +1,6 @@
 import axios from "axios";
 
-import { getAccessToken } from "@/lib/auth/tokens";
+import { getAccessToken, clearTokens } from "@/lib/auth/tokens";
 
 const api = axios.create({
   baseURL:
@@ -23,5 +23,17 @@ api.interceptors.request.use((config) => {
 
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+
+  (error) => {
+    if (error.response?.status === 401) {
+      clearTokens();
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 export default api;

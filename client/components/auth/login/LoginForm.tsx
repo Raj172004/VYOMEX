@@ -1,97 +1,104 @@
 "use client";
 
 import Link from "next/link";
-import { Eye, EyeOff, Lock, Mail } from "lucide-react";
-import { useState } from "react";
+import { Mail } from "lucide-react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+
+import {
+  loginSchema,
+  type LoginSchema,
+} from "@/schemas/login.schema";
+import { AuthService } from "@/services/auth/auth.service";
+import { useAuth } from "@/hooks/useAuth";
 
 import AuthCard from "../shared/AuthCard";
 import AuthDivider from "../shared/AuthDivider";
 import AuthHeader from "../shared/AuthHeader";
 import SocialLogin from "../shared/SocialLogin";
 
+import {
+  Input,
+  PasswordInput,
+  SubmitButton,
+  FormError,
+} from "@/components/ui/form";
+
 export default function LoginForm() {
-  const [showPassword, setShowPassword] = useState(false);
+  const { login, setLoading } = useAuth();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    setError,
+  } = useForm<LoginSchema>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  async function onSubmit(values: LoginSchema) {
+    try {
+      setLoading(true);
+
+      const response = await AuthService.login(values);
+
+      login(response.data);
+    } catch {
+      setError("root", {
+        message: "Invalid email or password.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <AuthCard>
       <AuthHeader
         badge="Welcome Back"
         title="Sign In"
-        description="Access your VYOMEX dashboard to manage projects, invoices, messages, and more."
+        description="Access your VYOMEX dashboard."
       />
 
-      <form className="mt-10 space-y-6">
-        <div>
-          <label className="mb-2 block font-semibold text-slate-700">
-            Email Address
-          </label>
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="mt-10 space-y-6"
+      >
+        <Input
+          label="Email Address"
+          type="email"
+          placeholder="john@example.com"
+          icon={Mail}
+          error={errors.email?.message}
+          {...register("email")}
+        />
 
-          <div className="relative">
-            <Mail
-              className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400"
-              size={20}
-            />
+        <PasswordInput
+          label="Password"
+          placeholder="Enter password"
+          error={errors.password?.message}
+        />
 
-            <input
-              type="email"
-              placeholder="john@example.com"
-              className="w-full rounded-2xl border border-slate-300 py-4 pl-14 pr-5 outline-none transition focus:border-cyan-500"
-            />
-          </div>
-        </div>
+        <FormError
+          message={errors.root?.message}
+        />
 
-        <div>
-          <label className="mb-2 block font-semibold text-slate-700">
-            Password
-          </label>
-
-          <div className="relative">
-            <Lock
-              className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400"
-              size={20}
-            />
-
-            <input
-              type={showPassword ? "text" : "password"}
-              placeholder="Enter password"
-              className="w-full rounded-2xl border border-slate-300 py-4 pl-14 pr-14 outline-none transition focus:border-cyan-500"
-            />
-
-            <button
-              type="button"
-              onClick={() => setShowPassword((value) => !value)}
-              className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-500"
-            >
-              {showPassword ? (
-                <EyeOff size={20} />
-              ) : (
-                <Eye size={20} />
-              )}
-            </button>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <label className="flex items-center gap-2 text-sm text-slate-600">
-            <input type="checkbox" />
-
-            Remember me
-          </label>
-
+        <div className="flex justify-end">
           <Link
             href="/forgot-password"
-            className="text-sm font-semibold text-cyan-600 hover:text-cyan-700"
+            className="text-sm font-semibold text-cyan-600"
           >
             Forgot Password?
           </Link>
         </div>
 
-        <button
-          type="submit"
-          className="w-full rounded-full bg-slate-900 py-4 font-semibold text-white transition hover:bg-slate-800"
-        >
+        <SubmitButton loading={isSubmitting}>
           Sign In
-        </button>
+        </SubmitButton>
       </form>
 
       <AuthDivider />
@@ -99,7 +106,7 @@ export default function LoginForm() {
       <SocialLogin />
 
       <p className="mt-8 text-center text-slate-600">
-        Do not have an account?{" "}
+        Don&apos;t have an account?{" "}
         <Link
           href="/register"
           className="font-semibold text-cyan-600"

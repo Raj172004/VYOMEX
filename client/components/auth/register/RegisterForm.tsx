@@ -1,107 +1,108 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { Mail, User } from "lucide-react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+
 import {
-  Eye,
-  EyeOff,
-  Lock,
-  Mail,
-  User,
-} from "lucide-react";
+  registerSchema,
+  type RegisterSchema,
+} from "@/schemas/register.schema";
+
+import { AuthService } from "@/services/auth/auth.service";
+import { useAuth } from "@/hooks/useAuth";
 
 import AuthCard from "../shared/AuthCard";
 import AuthDivider from "../shared/AuthDivider";
 import AuthHeader from "../shared/AuthHeader";
 import SocialLogin from "../shared/SocialLogin";
 
+import {
+  Input,
+  PasswordInput,
+  SubmitButton,
+  FormError,
+} from "@/components/ui/form";
+
 export default function RegisterForm() {
-  const [showPassword, setShowPassword] = useState(false);
+  const { login, setLoading } = useAuth();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    setError,
+  } = useForm<RegisterSchema>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+    },
+  });
+
+  async function onSubmit(values: RegisterSchema) {
+    try {
+      setLoading(true);
+
+      const response =
+        await AuthService.register(values);
+
+      login(response.data);
+    } catch {
+      setError("root", {
+        message:
+          "Unable to create your account. Please try again.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <AuthCard>
       <AuthHeader
         badge="Create Account"
         title="Register"
-        description="Create your VYOMEX account to manage projects, invoices, and collaboration."
+        description="Create your VYOMEX account and start collaborating."
       />
 
-      <form className="mt-10 space-y-6">
-        <div>
-          <label className="mb-2 block font-semibold text-slate-700">
-            Full Name
-          </label>
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="mt-10 space-y-6"
+      >
+        <Input
+          label="Full Name"
+          icon={User}
+          placeholder="John Doe"
+          error={errors.name?.message}
+          {...register("name")}
+        />
 
-          <div className="relative">
-            <User
-              size={20}
-              className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400"
-            />
+        <Input
+          label="Email Address"
+          icon={Mail}
+          type="email"
+          placeholder="john@example.com"
+          error={errors.email?.message}
+          {...register("email")}
+        />
 
-            <input
-              type="text"
-              placeholder="John Doe"
-              className="w-full rounded-2xl border border-slate-300 py-4 pl-14 pr-5 outline-none transition focus:border-cyan-500"
-            />
-          </div>
-        </div>
+        <PasswordInput
+          label="Password"
+          placeholder="Create a strong password"
+          error={errors.password?.message}
+          {...register("password")}
+        />
 
-        <div>
-          <label className="mb-2 block font-semibold text-slate-700">
-            Email Address
-          </label>
+        <FormError
+          message={errors.root?.message}
+        />
 
-          <div className="relative">
-            <Mail
-              size={20}
-              className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-
-            <input
-              type="email"
-              placeholder="john@example.com"
-              className="w-full rounded-2xl border border-slate-300 py-4 pl-14 pr-5 outline-none transition focus:border-cyan-500"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="mb-2 block font-semibold text-slate-700">
-            Password
-          </label>
-
-          <div className="relative">
-            <Lock
-              size={20}
-              className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-
-            <input
-              type={showPassword ? "text" : "password"}
-              placeholder="Create Password"
-              className="w-full rounded-2xl border border-slate-300 py-4 pl-14 pr-14 outline-none transition focus:border-cyan-500"
-            />
-
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-500"
-            >
-              {showPassword ? (
-                <EyeOff size={20} />
-              ) : (
-                <Eye size={20} />
-              )}
-            </button>
-          </div>
-        </div>
-
-        <button
-          type="submit"
-          className="w-full rounded-full bg-slate-900 py-4 font-semibold text-white transition hover:bg-slate-800"
-        >
+        <SubmitButton loading={isSubmitting}>
           Create Account
-        </button>
+        </SubmitButton>
       </form>
 
       <AuthDivider />

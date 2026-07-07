@@ -6,7 +6,7 @@ import AnalyticsCards from "./AnalyticsCards";
 import RevenueChart from "./RevenueChart";
 import ProgressCard from "./ProgressCard";
 import RecentProjects from "./RecentProjects";
-
+import ActivityFeed from "./activity/ActivityFeed";
 export default function BrowserFrame() {
   return (
     <motion.div
@@ -138,10 +138,14 @@ export default function BrowserFrame() {
         <RevenueChart />
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <ProgressCard />
+  <ProgressCard />
 
-          <RecentProjects />
-        </div>
+  <RecentProjects />
+</div>
+
+<div className="mt-6">
+  <ActivityFeed />
+</div>
       </div>
     </motion.div>
   );

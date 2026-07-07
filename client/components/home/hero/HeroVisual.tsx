@@ -4,41 +4,26 @@ import Floating from "@/components/ui/Floating";
 
 import BrowserFrame from "./BrowserFrame";
 import FloatingCard from "./FloatingCard";
-import AnalyticsCards from "./AnalyticsCards";
-import ProgressCard from "./ProgressCard";
+import NotificationStack from "./notifications/NotificationStack";
 
 export default function HeroVisual() {
   return (
-    <div className="relative mx-auto w-full max-w-[680px]">
-
+    <div className="relative mx-auto w-full max-w-[760px]">
+      {/* Main Dashboard */}
       <Floating duration={7}>
         <BrowserFrame />
       </Floating>
 
-      <div className="absolute -left-12 top-24 hidden xl:block">
-        <Floating
-          delay={0.3}
-          duration={5}
-        >
-          <FloatingCard />
-        </Floating>
-      </div>
+      {/* Live Notifications */}
+      <NotificationStack />
 
-      <div className="absolute -right-12 top-8 hidden xl:block">
+      {/* Decorative Floating Card */}
+      <div className="absolute -left-14 top-28 hidden xl:block">
         <Floating
-          delay={0.8}
+          delay={0.5}
           duration={6}
         >
-          <AnalyticsCards />
-        </Floating>
-      </div>
-
-      <div className="absolute -bottom-10 right-20 hidden xl:block">
-        <Floating
-          delay={1.2}
-          duration={4}
-        >
-          <ProgressCard />
+          <FloatingCard />
         </Floating>
       </div>
     </div>

@@ -11,33 +11,43 @@ import Portfolio from "@/components/home/portfolio/Portfolio";
 import Testimonials from "@/components/home/testimonials/Testimonials";
 import FAQ from "@/components/home/faq/FAQ";
 import CTA from "@/components/home/cta/CTA";
-
+import SectionDivider from "@/components/ui/effects/SectionDivider";
 export default function HomePage() {
   return (
     <>
-      <Navbar />
-
-      <Hero />
-
       <TrustedCompanies />
 
-      <Stats />
+<SectionDivider />
 
-      <Services />
+<Stats />
 
-      <Process />
+<SectionDivider />
 
-      <WhyChoose />
+<Services />
 
-      <Portfolio />
+<SectionDivider />
 
-      <Testimonials />
+<Process />
 
-      <FAQ />
+<SectionDivider />
 
-      <CTA />
+<WhyChoose />
 
-      <Footer />
+<SectionDivider />
+
+<Portfolio />
+
+<SectionDivider />
+
+<Testimonials />
+
+<SectionDivider />
+
+<FAQ />
+
+<SectionDivider />
+
+<CTA />
     </>
   );
 }
