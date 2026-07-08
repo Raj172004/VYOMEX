@@ -1,39 +1,27 @@
-import mongoose, {
-  Document,
-  Model,
-  Schema,
-} from "mongoose";
-
-export enum UserRole {
-  ADMIN = "admin",
-  CLIENT = "client",
-}
+import { Schema, model, Document } from "mongoose";
 
 export interface IUser extends Document {
-  fullName: string;
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
 
-  phone?: string;
-
-  avatar?: string;
-
-  role: UserRole;
-
   isVerified: boolean;
-
-  isBlocked: boolean;
-
-  refreshToken?: string;
+  role: "user" | "admin";
 
   createdAt: Date;
-
   updatedAt: Date;
 }
 
-const UserSchema = new Schema<IUser>(
+const userSchema = new Schema<IUser>(
   {
-    fullName: {
+    firstName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    lastName: {
       type: String,
       required: true,
       trim: true,
@@ -52,35 +40,15 @@ const UserSchema = new Schema<IUser>(
       required: true,
     },
 
-    phone: {
-      type: String,
-      default: "",
-    },
-
-    avatar: {
-      type: String,
-      default: "",
-    },
-
-    role: {
-      type: String,
-      enum: Object.values(UserRole),
-      default: UserRole.CLIENT,
-    },
-
     isVerified: {
       type: Boolean,
       default: false,
     },
 
-    isBlocked: {
-      type: Boolean,
-      default: false,
-    },
-
-    refreshToken: {
+    role: {
       type: String,
-      default: "",
+      enum: ["user", "admin"],
+      default: "user",
     },
   },
   {
@@ -88,8 +56,4 @@ const UserSchema = new Schema<IUser>(
   }
 );
 
-const User: Model<IUser> =
-  mongoose.models.User ||
-  mongoose.model<IUser>("User", UserSchema);
-
-export default User;
+export const User = model<IUser>("User", userSchema);
