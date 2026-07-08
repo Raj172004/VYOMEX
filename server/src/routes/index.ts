@@ -1,12 +1,9 @@
 import { Router } from "express";
 
+import authRoutes from "../modules/auth/routes/Auth.routes";
+
 const router = Router();
 
-router.get("/health", (_req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "VYOMEX API Running",
-  });
-});
+router.use("/auth", authRoutes);
 
 export default router;
