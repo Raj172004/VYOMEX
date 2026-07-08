@@ -4,10 +4,10 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 import AOSProvider from "@/providers/AOSProvider";
+import AuthProvider from "@/providers/AuthProvider";
 
 import ScrollProgress from "@/components/ui/ScrollProgress";
 import CursorSpotlight from "@/components/ui/CursorSpotlight";
-import AuthProvider from "@/providers/AuthProvider";
 
 const geistSans = Geist({
   subsets: ["latin"],
@@ -32,21 +32,16 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground overflow-x-hidden`}
+        className={`${geistSans.variable} ${geistMono.variable} bg-background text-foreground overflow-x-hidden antialiased`}
       >
-        {/* Global Scroll Progress */}
+        {/* Global UI */}
         <ScrollProgress />
-
-        {/* Global Cursor Spotlight */}
         <CursorSpotlight />
 
         {/* Global Providers */}
-        <AOSProvider>
-          {children}
-        </AOSProvider>
         <AuthProvider>
-  {children}
-</AuthProvider>
+          <AOSProvider>{children}</AOSProvider>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -1,80 +1,11 @@
 "use client";
 
-import { motion } from "framer-motion";
-
 export default function SectionDivider() {
   return (
-    <div className="relative h-36 overflow-hidden">
-      {/* Top Line */}
+    <div className="relative h-24 overflow-hidden">
+      <div className="absolute left-1/2 top-1/2 h-px w-[92%] -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-transparent via-cyan-200 to-transparent" />
 
-      <div
-        className="
-          absolute
-          inset-x-0
-          top-0
-          h-px
-          bg-gradient-to-r
-          from-transparent
-          via-cyan-300/70
-          to-transparent
-        "
-      />
-
-      {/* Aurora */}
-
-      <motion.div
-        animate={{
-          x: [-120, 120, -120],
-        }}
-        transition={{
-          repeat: Infinity,
-          duration: 16,
-          ease: "easeInOut",
-        }}
-        className="
-          absolute
-          left-1/2
-          top-0
-
-          h-40
-          w-[900px]
-
-          -translate-x-1/2
-
-          rounded-full
-
-          bg-cyan-400/10
-
-          blur-[120px]
-        "
-      />
-
-      <motion.div
-        animate={{
-          x: [120, -120, 120],
-        }}
-        transition={{
-          repeat: Infinity,
-          duration: 18,
-          ease: "easeInOut",
-        }}
-        className="
-          absolute
-          left-1/2
-          top-6
-
-          h-36
-          w-[700px]
-
-          -translate-x-1/2
-
-          rounded-full
-
-          bg-blue-500/10
-
-          blur-[120px]
-        "
-      />
+      <div className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-400/10 blur-3xl" />
     </div>
   );
 }
