@@ -7,7 +7,6 @@ import { RegisterDto } from "../dto/Register.dto";
 import { LoginDto } from "../dto/Login.dto";
 
 import { ApiError } from "../../../utils/ApiError";
-
 import { env } from "../../../config/env";
 
 class AuthService {
@@ -27,7 +26,11 @@ class AuthService {
       password: hashedPassword,
     });
 
-    return user;
+    const userObject = user.toObject();
+
+    const { password, ...safeUser } = userObject;
+
+    return safeUser;
   }
 
   async login(data: LoginDto) {
@@ -57,8 +60,12 @@ class AuthService {
       }
     );
 
+    const userObject = user.toObject();
+
+    const { password, ...safeUser } = userObject;
+
     return {
-      user,
+      user: safeUser,
       accessToken,
     };
   }
