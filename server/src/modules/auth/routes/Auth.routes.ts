@@ -1,26 +1,26 @@
 import { Router } from "express";
 
 import authController from "../controllers/Auth.controller";
+import { getProfile } from "../controllers/Profile.controller";
 
-import { validate } from "../../../middleware/validate.middleware";
-
-import {
-  registerSchema,
-  loginSchema,
-} from "../validators/Auth.validator";
+import { authenticate } from "../../../middleware/jwt.middleware";
 
 const router = Router();
 
 router.post(
   "/register",
-  validate(registerSchema),
-  authController.register
+  authController.register.bind(authController)
 );
 
 router.post(
   "/login",
-  validate(loginSchema),
-  authController.login
+  authController.login.bind(authController)
+);
+
+router.get(
+  "/me",
+  authenticate,
+  getProfile
 );
 
 export default router;
