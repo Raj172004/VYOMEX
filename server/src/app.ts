@@ -14,8 +14,10 @@ import routes from "./routes";
 
 import { env } from "./config/env";
 
-import { errorMiddleware } from "./middleware/error.middleware";
+import clientRoutes from "./modules/client/routes/Client.routes";
 
+import { errorMiddleware } from "./middleware/error.middleware";
+import taskRoutes from "../src/modules/task/routes/Task.routes";
 import projectRoutes from "./modules/project/routes/Project.routes";
 const app = express();
 
@@ -41,8 +43,12 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", routes);
 
-app.use(errorMiddleware);
-
 app.use("/api/projects", projectRoutes);
+
+app.use("/api/tasks", taskRoutes);
+
+app.use("/api/clients", clientRoutes);
+
+app.use(errorMiddleware);
 
 export default app;
