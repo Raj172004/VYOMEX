@@ -16,6 +16,7 @@ import { env } from "./config/env";
 
 import { errorMiddleware } from "./middleware/error.middleware";
 
+import projectRoutes from "./modules/project/routes/Project.routes";
 const app = express();
 
 app.use(
@@ -41,5 +42,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api", routes);
 
 app.use(errorMiddleware);
+
+app.use("/api/projects", projectRoutes);
 
 export default app;

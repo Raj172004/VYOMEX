@@ -1,12 +1,14 @@
 import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
+import { Types } from "mongoose";
 
 import { env } from "../config/env";
 import { ApiError } from "../utils/ApiError";
 
 interface JwtPayload {
-  _id: string;
-  email: string;
+  id?: string;
+  _id?: string;
+  email?: string;
   role: string;
 }
 
@@ -19,10 +21,7 @@ export const verifyJWT = (
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      throw new ApiError(
-        401,
-        "Authentication required"
-      );
+      throw new ApiError(401, "Authentication required");
     }
 
     const token = authHeader.split(" ")[1];
@@ -32,14 +31,20 @@ export const verifyJWT = (
       env.JWT_SECRET
     ) as JwtPayload;
 
+    const userId = decoded._id ?? decoded.id;
+
+    if (!userId) {
+      throw new ApiError(401, "Invalid token payload");
+    }
+
     req.user = {
-      _id: decoded._id as any,
-      email: decoded.email,
+      _id: new Types.ObjectId(userId),
+      email: decoded.email ?? "",
       role: decoded.role,
     };
 
     next();
-  } catch {
+  } catch (error) {
     next(
       new ApiError(
         401,
@@ -51,6 +56,5 @@ export const verifyJWT = (
 
 /**
  * Backward compatibility
- * Existing routes can continue using `authenticate`
  */
 export const authenticate = verifyJWT;
