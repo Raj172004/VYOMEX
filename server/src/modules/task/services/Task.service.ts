@@ -33,11 +33,12 @@ class TaskService {
   }
 
   async getTasks() {
-    return taskRepository.findAll();
+    return taskRepository.getAllTasks();
   }
 
   async getTaskById(id: string) {
-    const task = await taskRepository.findById(id);
+    const task =
+      await taskRepository.getTaskById(id);
 
     if (!task) {
       throw new ApiError(
@@ -53,7 +54,9 @@ class TaskService {
     id: string,
     data: UpdateTaskDto
   ) {
-    const updateData: any = { ...data };
+    const updateData: Record<string, unknown> = {
+      ...data,
+    };
 
     if (data.project) {
       updateData.project = new Types.ObjectId(
@@ -67,10 +70,11 @@ class TaskService {
       );
     }
 
-    const task = await taskRepository.update(
-      id,
-      updateData
-    );
+    const task =
+      await taskRepository.updateTask(
+        id,
+        updateData as any
+      );
 
     if (!task) {
       throw new ApiError(
@@ -83,7 +87,8 @@ class TaskService {
   }
 
   async deleteTask(id: string) {
-    const task = await taskRepository.delete(id);
+    const task =
+      await taskRepository.deleteTask(id);
 
     if (!task) {
       throw new ApiError(
@@ -92,7 +97,9 @@ class TaskService {
       );
     }
 
-    return;
+    return {
+      message: "Task deleted successfully",
+    };
   }
 }
 

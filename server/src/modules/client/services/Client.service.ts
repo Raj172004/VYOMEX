@@ -1,6 +1,8 @@
 import { ApiError } from "../../../utils/ApiError";
+
 import { CreateClientDto } from "../dto/CreateClient.dto";
 import { UpdateClientDto } from "../dto/UpdateClient.dto";
+
 import clientRepository from "../repositories/Client.repository";
 
 class ClientService {
@@ -8,14 +10,14 @@ class ClientService {
     data: CreateClientDto,
     userId: string
   ) {
-    const existing = await clientRepository.findAll();
+    const existingClient =
+      await clientRepository.findByEmail(data.email);
 
-    const emailExists = existing.find(
-      (client) => client.email === data.email
-    );
-
-    if (emailExists) {
-      throw new ApiError(400, "Client email already exists");
+    if (existingClient) {
+      throw new ApiError(
+        400,
+        "Client email already exists"
+      );
     }
 
     return clientRepository.create({
@@ -25,14 +27,18 @@ class ClientService {
   }
 
   async getClients() {
-    return clientRepository.findAll();
+    return clientRepository.getAllClients();
   }
 
   async getClientById(id: string) {
-    const client = await clientRepository.findById(id);
+    const client =
+      await clientRepository.getClientById(id);
 
     if (!client) {
-      throw new ApiError(404, "Client not found");
+      throw new ApiError(
+        404,
+        "Client not found"
+      );
     }
 
     return client;
@@ -42,23 +48,33 @@ class ClientService {
     id: string,
     data: UpdateClientDto
   ) {
-    const client = await clientRepository.update(id, data);
+    const client =
+      await clientRepository.updateClient(id, data);
 
     if (!client) {
-      throw new ApiError(404, "Client not found");
+      throw new ApiError(
+        404,
+        "Client not found"
+      );
     }
 
     return client;
   }
 
   async deleteClient(id: string) {
-    const client = await clientRepository.delete(id);
+    const client =
+      await clientRepository.deleteClient(id);
 
     if (!client) {
-      throw new ApiError(404, "Client not found");
+      throw new ApiError(
+        404,
+        "Client not found"
+      );
     }
 
-    return;
+    return {
+      message: "Client deleted successfully",
+    };
   }
 }
 

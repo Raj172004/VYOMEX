@@ -1,51 +1,146 @@
 import { Types } from "mongoose";
 
-import { Invoice } from "../models/Invoice.model";
+import { BaseRepository } from "../../../common/database/BaseRepository";
+
+import {
+  Invoice,
+  InvoiceDocument,
+} from "../models/Invoice.model";
+
 import { CreateInvoiceDto } from "../dto/CreateInvoice.dto";
 import { UpdateInvoiceDto } from "../dto/UpdateInvoice.dto";
 
-export class InvoiceRepository {
-  async create(
-    data: CreateInvoiceDto,
-    createdBy: Types.ObjectId
-  ) {
-    return Invoice.create({
-      ...data,
-      createdBy,
+class InvoiceRepository extends BaseRepository<InvoiceDocument> {
+  constructor() {
+    super(Invoice);
+  }
+
+  async createInvoice(
+  data: CreateInvoiceDto,
+  createdBy: Types.ObjectId
+) {
+  return this.create({
+    invoiceNumber: data.invoiceNumber,
+
+    client: new Types.ObjectId(data.client),
+
+    project: data.project
+      ? new Types.ObjectId(data.project)
+      : undefined,
+
+    issueDate: data.issueDate,
+
+    dueDate: data.dueDate,
+
+    items: data.items,
+
+    subtotal: data.subtotal,
+
+    tax: data.tax,
+
+    discount: data.discount,
+
+    total: data.total,
+
+    status: data.status,
+
+    createdBy,
+  } as Partial<InvoiceDocument>);
+}
+
+  async getAllInvoices() {
+    return this.findAll({
+      populate: [
+        {
+          path: "client",
+        },
+        {
+          path: "project",
+        },
+        {
+          path: "createdBy",
+          select: "-password",
+        },
+      ],
+      sort: {
+        createdAt: -1,
+      },
     });
   }
 
-  async findAll() {
-    return Invoice.find()
-      .populate("client")
-      .populate("project")
-      .populate("createdBy", "-password")
-      .sort({ createdAt: -1 });
+  async getInvoiceById(id: string) {
+    return this.findById(id, {
+      populate: [
+        {
+          path: "client",
+        },
+        {
+          path: "project",
+        },
+        {
+          path: "createdBy",
+          select: "-password",
+        },
+      ],
+    });
   }
 
-  async findById(id: string) {
-    return Invoice.findById(id)
-      .populate("client")
-      .populate("project")
-      .populate("createdBy", "-password");
-  }
-
-  async update(
+  async updateInvoice(
     id: string,
     data: UpdateInvoiceDto
   ) {
-    return Invoice.findByIdAndUpdate(id, data, {
-      new: true,
-      runValidators: true,
-    })
-      .populate("client")
-      .populate("project")
-      .populate("createdBy", "-password");
+    const updateData: Record<string, unknown> = {
+      ...data,
+    };
+
+    if (data.client) {
+      updateData.client = new Types.ObjectId(
+        data.client
+      );
+    }
+
+    if (data.project) {
+      updateData.project = new Types.ObjectId(
+        data.project
+      );
+    }
+
+    return this.update(
+      id,
+      updateData as Partial<InvoiceDocument>
+    );
   }
 
-  async delete(id: string) {
-    return Invoice.findByIdAndDelete(id);
+  async deleteInvoice(id: string) {
+    return this.delete(id);
+  }
+
+  async findByInvoiceNumber(
+    invoiceNumber: string
+  ) {
+    return this.findOne({
+      invoiceNumber,
+    });
+  }
+
+  async findByClient(clientId: string) {
+    return this.findAll({
+      filter: {
+        client: new Types.ObjectId(clientId),
+      },
+      populate: [
+        {
+          path: "client",
+        },
+        {
+          path: "project",
+        },
+      ],
+      sort: {
+        createdAt: -1,
+      },
+    });
   }
 }
 
-export const invoiceRepository = new InvoiceRepository();
+export default new InvoiceRepository();

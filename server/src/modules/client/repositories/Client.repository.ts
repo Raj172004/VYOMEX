@@ -1,37 +1,46 @@
+import { BaseRepository } from "../../../common/database/BaseRepository";
+
 import ClientModel, {
   IClient,
 } from "../models/Client.model";
 
-class ClientRepository {
-  create(data: Partial<IClient>) {
-    return ClientModel.create(data);
+class ClientRepository extends BaseRepository<IClient> {
+  constructor() {
+    super(ClientModel);
   }
 
-  findAll() {
-    return ClientModel.find().populate("createdBy");
+  async findByEmail(email: string) {
+    return this.findOne({ email });
   }
 
-  findById(id: string) {
-    return ClientModel.findById(id).populate(
-      "createdBy"
-    );
+  async findByCompany(company: string) {
+    return this.findOne({ company });
   }
 
-  update(
+  async getAllClients() {
+    return this.findAll({
+      populate: "createdBy",
+      sort: {
+        createdAt: -1,
+      },
+    });
+  }
+
+  async getClientById(id: string) {
+    return this.findById(id, {
+      populate: "createdBy",
+    });
+  }
+
+  async updateClient(
     id: string,
     data: Partial<IClient>
   ) {
-    return ClientModel.findByIdAndUpdate(
-      id,
-      data,
-      {
-        new: true,
-      }
-    ).populate("createdBy");
+    return this.update(id, data);
   }
 
-  delete(id: string) {
-    return ClientModel.findByIdAndDelete(id);
+  async deleteClient(id: string) {
+    return this.delete(id);
   }
 }
 

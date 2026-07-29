@@ -39,11 +39,12 @@ class ProjectService {
   }
 
   async getProjects() {
-    return projectRepository.findAll();
+    return projectRepository.getAllProjects();
   }
 
   async getProjectById(id: string) {
-    const project = await projectRepository.findById(id);
+    const project =
+      await projectRepository.getProjectById(id);
 
     if (!project) {
       throw new ApiError(
@@ -64,7 +65,9 @@ class ProjectService {
     };
 
     if (data.client) {
-      updateData.client = new Types.ObjectId(data.client);
+      updateData.client = new Types.ObjectId(
+        data.client
+      );
     }
 
     if (data.assignedTo) {
@@ -73,10 +76,11 @@ class ProjectService {
       );
     }
 
-    const project = await projectRepository.update(
-      id,
-      updateData
-    );
+    const project =
+      await projectRepository.updateProject(
+        id,
+        updateData as any
+      );
 
     if (!project) {
       throw new ApiError(
@@ -89,7 +93,8 @@ class ProjectService {
   }
 
   async deleteProject(id: string) {
-    const project = await projectRepository.delete(id);
+    const project =
+      await projectRepository.deleteProject(id);
 
     if (!project) {
       throw new ApiError(
@@ -97,6 +102,10 @@ class ProjectService {
         "Project not found"
       );
     }
+
+    return {
+      message: "Project deleted successfully",
+    };
   }
 }
 

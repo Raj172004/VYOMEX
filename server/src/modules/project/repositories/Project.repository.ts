@@ -1,36 +1,78 @@
-import Project, { IProject } from "../models/Project.model";
+import { BaseRepository } from "../../../common/database/BaseRepository";
 
-import { CreateProjectDto } from "../dto/CreateProject.dto";
-import { UpdateProjectDto } from "../dto/UpdateProject.dto";
+import ProjectModel, {
+  IProject,
+} from "../models/Project.model";
 
-class ProjectRepository {
-  async create(data: Partial<IProject>) {
-    return Project.create(data);
+class ProjectRepository extends BaseRepository<IProject> {
+  constructor() {
+    super(ProjectModel);
   }
 
-  async findAll() {
-    return Project.find()
-      .populate("createdBy", "firstName lastName email")
-      .populate("assignedTo", "firstName lastName email");
+  async findByTitle(title: string) {
+    return this.findOne({ title });
   }
 
-  async findById(id: string) {
-    return Project.findById(id)
-      .populate("createdBy", "firstName lastName email")
-      .populate("assignedTo", "firstName lastName email");
-  }
-
-  async update(
-    id: string,
-    data: UpdateProjectDto
-  ) {
-    return Project.findByIdAndUpdate(id, data, {
-      new: true,
+  async findByClient(clientId: string) {
+    return this.findAll({
+      filter: {
+        client: clientId,
+      },
+      populate: [
+        {
+          path: "client",
+        },
+      ],
+      sort: {
+        createdAt: -1,
+      },
     });
   }
 
-  async delete(id: string) {
-    return Project.findByIdAndDelete(id);
+  async getAllProjects() {
+    return this.findAll({
+      populate: [
+        {
+          path: "client",
+        },
+        {
+          path: "createdBy",
+        },
+        {
+          path: "assignedTo",
+        },
+      ],
+      sort: {
+        createdAt: -1,
+      },
+    });
+  }
+
+  async getProjectById(id: string) {
+    return this.findById(id, {
+      populate: [
+        {
+          path: "client",
+        },
+        {
+          path: "createdBy",
+        },
+        {
+          path: "assignedTo",
+        },
+      ],
+    });
+  }
+
+  async updateProject(
+    id: string,
+    data: Partial<IProject>
+  ) {
+    return this.update(id, data);
+  }
+
+  async deleteProject(id: string) {
+    return this.delete(id);
   }
 }
 

@@ -1,38 +1,61 @@
-import Task, { ITask } from "../models/Task.model";
+import { BaseRepository } from "../../../common/database/BaseRepository";
 
-class TaskRepository {
-  async create(data: Partial<ITask>) {
-    return Task.create(data);
+import TaskModel, {
+  ITask,
+} from "../models/Task.model";
+
+class TaskRepository extends BaseRepository<ITask> {
+  constructor() {
+    super(TaskModel);
   }
 
-  async findAll() {
-    return Task.find()
-      .populate("project")
-      .populate("assignedTo")
-      .populate("createdBy");
+  async getAllTasks() {
+    return this.findAll({
+      populate: [
+        { path: "project" },
+        { path: "assignedTo" },
+        { path: "createdBy" },
+      ],
+      sort: {
+        createdAt: -1,
+      },
+    });
   }
 
-  async findById(id: string) {
-    return Task.findById(id)
-      .populate("project")
-      .populate("assignedTo")
-      .populate("createdBy");
+  async getTaskById(id: string) {
+    return this.findById(id, {
+      populate: [
+        { path: "project" },
+        { path: "assignedTo" },
+        { path: "createdBy" },
+      ],
+    });
   }
 
-  async update(
+  async findByProject(projectId: string) {
+    return this.findAll({
+      filter: {
+        project: projectId,
+      },
+      populate: [
+        { path: "assignedTo" },
+        { path: "createdBy" },
+      ],
+      sort: {
+        createdAt: -1,
+      },
+    });
+  }
+
+  async updateTask(
     id: string,
     data: Partial<ITask>
   ) {
-    return Task.findByIdAndUpdate(id, data, {
-      new: true,
-    })
-      .populate("project")
-      .populate("assignedTo")
-      .populate("createdBy");
+    return this.update(id, data);
   }
 
-  async delete(id: string) {
-    return Task.findByIdAndDelete(id);
+  async deleteTask(id: string) {
+    return this.delete(id);
   }
 }
 
