@@ -1,0 +1,2631 @@
+====================================================
+src\config\db.ts
+====================================================
+import mongoose from "mongoose";
+
+import { env } from "./env";
+
+export async function connectDatabase() {
+  try {
+    await mongoose.connect(env.MONGODB_URI);
+
+    console.log("MongoDB Connected");
+  } catch (error) {
+    console.error(error);
+
+    process.exit(1);
+  }
+}
+
+====================================================
+src\config\env.ts
+====================================================
+import dotenv from "dotenv";
+
+dotenv.config();
+
+export const env = {
+  NODE_ENV: process.env.NODE_ENV ?? "development",
+
+  PORT: Number(process.env.PORT ?? 5000),
+
+  CLIENT_URL: process.env.CLIENT_URL ?? "http://localhost:3000",
+
+  MONGODB_URI:
+    process.env.MONGODB_URI ??
+    "mongodb://127.0.0.1:27017/vyomex",
+
+  JWT_SECRET:
+    process.env.JWT_SECRET ??
+    "CHANGE_THIS_SECRET",
+
+  JWT_EXPIRES_IN:
+    process.env.JWT_EXPIRES_IN ?? "7d",
+};
+
+====================================================
+src\constants\permissions.ts
+====================================================
+export const PERMISSIONS = {
+  MANAGE_USERS: "manage:users",
+  MANAGE_PROJECTS: "manage:projects",
+  MANAGE_CONTACTS: "manage:contacts",
+  VIEW_DASHBOARD: "view:dashboard",
+} as const;
+
+export type Permission =
+  (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
+
+====================================================
+src\constants\roles.ts
+====================================================
+export const ROLES = {
+  ADMIN: "admin",
+  USER: "user",
+} as const;
+
+export type Role =
+  (typeof ROLES)[keyof typeof ROLES];
+
+====================================================
+src\middleware\permissions\admin.middleware.ts
+====================================================
+import { Request, Response, NextFunction } from "express";
+
+export function adminOnly(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      message: "Unauthorized",
+    });
+  }
+
+  if (req.user.role !== "admin") {
+    return res.status(403).json({
+      success: false,
+      message: "Admin access required",
+    });
+  }
+
+  next();
+}
+
+====================================================
+src\middleware\permissions\authorize.ts
+====================================================
+import { Request, Response, NextFunction } from "express";
+
+export function authorize(...roles: string[]) {
+  return (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied",
+      });
+    }
+
+    next();
+  };
+}
+
+====================================================
+src\middleware\permissions\role.middleware.ts
+====================================================
+import { Request, Response, NextFunction } from "express";
+
+export function allowRoles(...roles: string[]) {
+  return (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden",
+      });
+    }
+
+    next();
+  };
+}
+
+====================================================
+src\middleware\auth.middleware.ts
+====================================================
+
+====================================================
+src\middleware\error.middleware.ts
+====================================================
+import { NextFunction, Request, Response } from "express";
+import { ApiError } from "../utils/ApiError";
+
+export function errorMiddleware(
+  error: Error,
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  console.error("========== ERROR ==========");
+  console.error(error);
+  console.error("===========================");
+
+  if (error instanceof ApiError) {
+    return res.status(error.statusCode).json({
+      success: false,
+      message: error.message,
+    });
+  }
+
+  return res.status(500).json({
+    success: false,
+    message: "Internal Server Error",
+  });
+}
+
+====================================================
+src\middleware\jwt.middleware.ts
+====================================================
+import { NextFunction, Request, Response } from "express";
+import jwt from "jsonwebtoken";
+import { Types } from "mongoose";
+
+import { env } from "../config/env";
+import { ApiError } from "../utils/ApiError";
+
+interface JwtPayload {
+  id?: string;
+  _id?: string;
+  email?: string;
+  role: string;
+}
+
+export const verifyJWT = (
+  req: Request,
+  _: Response,
+  next: NextFunction
+) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      throw new ApiError(401, "Authentication required");
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    const decoded = jwt.verify(
+      token,
+      env.JWT_SECRET
+    ) as JwtPayload;
+
+    const userId = decoded._id ?? decoded.id;
+
+    if (!userId) {
+      throw new ApiError(401, "Invalid token payload");
+    }
+
+    req.user = {
+      _id: new Types.ObjectId(userId),
+      email: decoded.email ?? "",
+      role: decoded.role,
+    };
+
+    next();
+  } catch (error) {
+    next(
+      new ApiError(
+        401,
+        "Invalid or expired token"
+      )
+    );
+  }
+};
+
+/**
+ * Backward compatibility
+ */
+export const authenticate = verifyJWT;
+
+====================================================
+src\middleware\validate.middleware.ts
+====================================================
+import { NextFunction, Request, Response } from "express";
+import { ZodSchema } from "zod";
+
+export const validate =
+  (schema: ZodSchema) =>
+  (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    const result = schema.safeParse(req.body);
+
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: result.error.flatten(),
+      });
+    }
+
+    req.body = result.data;
+
+    next();
+  };
+
+====================================================
+src\modules\admin\controllers\Admin.controller.ts
+====================================================
+import { Request, Response } from "express";
+
+class AdminController {
+  dashboard(
+    req: Request,
+    res: Response
+  ) {
+    return res.status(200).json({
+      success: true,
+      message: "Welcome Admin",
+      data: {
+        totalUsers: 125,
+        totalProjects: 48,
+        totalRevenue: 152000,
+      },
+    });
+  }
+}
+
+export default new AdminController();
+
+====================================================
+src\modules\admin\routes\Admin.routes.ts
+====================================================
+import { Router } from "express";
+
+import adminController from "../controllers/Admin.controller";
+
+import { verifyJWT } from "../../../middleware/jwt.middleware";
+
+import { adminOnly } from "../../../middleware/permissions/admin.middleware";
+
+const router = Router();
+
+router.get(
+  "/dashboard",
+  verifyJWT,
+  adminOnly,
+  adminController.dashboard
+);
+
+export default router;
+
+====================================================
+src\modules\admin\services\Admin.service.ts
+====================================================
+
+====================================================
+src\modules\auth\controllers\Auth.controller.ts
+====================================================
+import { Request, Response, NextFunction } from "express";
+
+import authService from "../services/Auth.service";
+
+class AuthController {
+  async register(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const user = await authService.register(req.body);
+
+      return res.status(201).json({
+        success: true,
+        message: "User registered successfully",
+        data: user,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async login(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const result = await authService.login(req.body);
+
+      return res.status(200).json({
+        success: true,
+        message: "Login successful",
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+}
+
+export default new AuthController();
+
+====================================================
+src\modules\auth\controllers\Profile.controller.ts
+====================================================
+import { Request, Response } from "express";
+
+import { ApiResponse } from "../../../utils/ApiResponse";
+
+export const getProfile = (
+  req: Request,
+  res: Response
+) => {
+  return res.status(200).json(
+    new ApiResponse(
+      true,
+      "Profile fetched successfully",
+      req.user
+    )
+  );
+};
+
+====================================================
+src\modules\auth\dto\Login.dto.ts
+====================================================
+export interface LoginDto {
+  email: string;
+  password: string;
+}
+
+====================================================
+src\modules\auth\dto\Register.dto.ts
+====================================================
+export interface RegisterDto {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
+
+====================================================
+src\modules\auth\repositories\Auth.repository.ts
+====================================================
+import { User } from "../../user/models/User.model";
+
+export class AuthRepository {
+  async findByEmail(email: string) {
+    return User.findOne({ email });
+  }
+
+  async create(data: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+  }) {
+    return User.create(data);
+  }
+}
+
+export default new AuthRepository();
+
+====================================================
+src\modules\auth\routes\Auth.routes.ts
+====================================================
+import { Router } from "express";
+
+import authController from "../controllers/Auth.controller";
+import { getProfile } from "../controllers/Profile.controller";
+
+import { authenticate } from "../../../middleware/jwt.middleware";
+
+const router = Router();
+
+router.post(
+  "/register",
+  authController.register.bind(authController)
+);
+
+router.post(
+  "/login",
+  authController.login.bind(authController)
+);
+
+router.get(
+  "/me",
+  authenticate,
+  getProfile
+);
+
+export default router;
+
+====================================================
+src\modules\auth\services\Auth.service.ts
+====================================================
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+
+import authRepository from "../repositories/Auth.repository";
+
+import { RegisterDto } from "../dto/Register.dto";
+import { LoginDto } from "../dto/Login.dto";
+
+import { ApiError } from "../../../utils/ApiError";
+import { env } from "../../../config/env";
+
+class AuthService {
+  async register(data: RegisterDto) {
+    const existingUser = await authRepository.findByEmail(data.email);
+
+    if (existingUser) {
+      throw new ApiError(409, "Email already exists");
+    }
+
+    const hashedPassword = await bcrypt.hash(data.password, 12);
+
+    const user = await authRepository.create({
+      firstName: data.firstName,
+      lastName: data.lastName,
+      email: data.email,
+      password: hashedPassword,
+    });
+
+    const userObject = user.toObject();
+
+    const { password, ...safeUser } = userObject;
+
+    return safeUser;
+  }
+
+  async login(data: LoginDto) {
+    const user = await authRepository.findByEmail(data.email);
+
+    if (!user) {
+      throw new ApiError(401, "Invalid credentials");
+    }
+
+    const passwordMatch = await bcrypt.compare(
+      data.password,
+      user.password
+    );
+
+    if (!passwordMatch) {
+      throw new ApiError(401, "Invalid credentials");
+    }
+
+    const accessToken = jwt.sign(
+      {
+        id: user._id,
+        role: user.role,
+      },
+      env.JWT_SECRET,
+      {
+        expiresIn: "15m",
+      }
+    );
+
+    const userObject = user.toObject();
+
+    const { password, ...safeUser } = userObject;
+
+    return {
+      user: safeUser,
+      accessToken,
+    };
+  }
+}
+
+export default new AuthService();
+
+====================================================
+src\modules\auth\validators\Auth.validator.ts
+====================================================
+import { z } from "zod";
+
+export const registerSchema = z
+  .object({
+    firstName: z
+      .string()
+      .min(2, "First name must contain at least 2 characters")
+      .max(50),
+
+    lastName: z
+      .string()
+      .min(2, "Last name must contain at least 2 characters")
+      .max(50),
+
+    email: z
+      .string()
+      .email("Invalid email address")
+      .trim()
+      .toLowerCase(),
+
+    password: z
+      .string()
+      .min(8, "Password must be at least 8 characters")
+      .regex(/[A-Z]/, "Must contain one uppercase letter")
+      .regex(/[a-z]/, "Must contain one lowercase letter")
+      .regex(/[0-9]/, "Must contain one number")
+      .regex(
+        /[!@#$%^&*(),.?":{}|<>]/,
+        "Must contain one special character"
+      ),
+
+    confirmPassword: z.string(),
+  })
+  .refine(
+    (data) => data.password === data.confirmPassword,
+    {
+      message: "Passwords do not match",
+      path: ["confirmPassword"],
+    }
+  );
+
+export const loginSchema = z.object({
+  email: z
+    .string()
+    .email("Invalid email address")
+    .trim()
+    .toLowerCase(),
+
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters"),
+});
+
+export type RegisterInput = z.infer<typeof registerSchema>;
+
+export type LoginInput = z.infer<typeof loginSchema>;
+
+====================================================
+src\modules\client\controllers\Client.controller.ts
+====================================================
+import { Request, Response, NextFunction } from "express";
+
+import clientService from "../services/Client.service";
+
+export const create = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const client = await clientService.createClient(
+      req.body,
+      req.user!._id.toString()
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "Client created successfully",
+      data: client,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAll = async (
+  _: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const clients = await clientService.getClients();
+
+    res.json({
+      success: true,
+      data: clients,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const id = req.params.id as string;
+
+    const client = await clientService.getClientById(id);
+
+    res.json({
+      success: true,
+      data: client,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const update = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const id = req.params.id as string;
+
+    const client = await clientService.updateClient(
+      id,
+      req.body
+    );
+
+    res.json({
+      success: true,
+      message: "Client updated successfully",
+      data: client,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const remove = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const id = req.params.id as string;
+
+    await clientService.deleteClient(id);
+
+    res.json({
+      success: true,
+      message: "Client deleted successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+====================================================
+src\modules\client\dto\CreateClient.dto.ts
+====================================================
+export interface CreateClientDto {
+  firstName: string;
+  lastName: string;
+  company: string;
+  email: string;
+  phone?: string;
+  website?: string;
+  industry?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+  status?: "active" | "inactive";
+  notes?: string;
+}
+
+====================================================
+src\modules\client\dto\UpdateClient.dto.ts
+====================================================
+export interface UpdateClientDto {
+  firstName?: string;
+  lastName?: string;
+  company?: string;
+  email?: string;
+  phone?: string;
+  website?: string;
+  industry?: string;
+ address?: string;
+  city?: string;
+  country?: string;
+  status?: "active" | "inactive";
+  notes?: string;
+}
+
+====================================================
+src\modules\client\models\Client.model.ts
+====================================================
+import { Document, model, Schema } from "mongoose";
+
+export interface IClient extends Document {
+  firstName: string;
+  lastName: string;
+  company: string;
+  email: string;
+  phone: string;
+  website: string;
+  industry: string;
+  address: string;
+  city: string;
+  country: string;
+  status: "active" | "inactive";
+  notes: string;
+  createdBy: Schema.Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const ClientSchema = new Schema<IClient>(
+  {
+    firstName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    lastName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    company: {
+      type: String,
+      required: true,
+    },
+
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+
+    phone: {
+      type: String,
+      default: "",
+    },
+
+    website: {
+      type: String,
+      default: "",
+    },
+
+    industry: {
+      type: String,
+      default: "",
+    },
+
+    address: {
+      type: String,
+      default: "",
+    },
+
+    city: {
+      type: String,
+      default: "",
+    },
+
+    country: {
+      type: String,
+      default: "",
+    },
+
+    status: {
+      type: String,
+      enum: ["active", "inactive"],
+      default: "active",
+    },
+
+    notes: {
+      type: String,
+      default: "",
+    },
+
+    createdBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+export default model<IClient>(
+  "Client",
+  ClientSchema
+);
+
+====================================================
+src\modules\client\repositories\Client.repository.ts
+====================================================
+import ClientModel, {
+  IClient,
+} from "../models/Client.model";
+
+class ClientRepository {
+  create(data: Partial<IClient>) {
+    return ClientModel.create(data);
+  }
+
+  findAll() {
+    return ClientModel.find().populate("createdBy");
+  }
+
+  findById(id: string) {
+    return ClientModel.findById(id).populate(
+      "createdBy"
+    );
+  }
+
+  update(
+    id: string,
+    data: Partial<IClient>
+  ) {
+    return ClientModel.findByIdAndUpdate(
+      id,
+      data,
+      {
+        new: true,
+      }
+    ).populate("createdBy");
+  }
+
+  delete(id: string) {
+    return ClientModel.findByIdAndDelete(id);
+  }
+}
+
+export default new ClientRepository();
+
+====================================================
+src\modules\client\routes\Client.routes.ts
+====================================================
+import { Router } from "express";
+
+import { verifyJWT } from "../../../middleware/jwt.middleware";
+
+import {
+  create,
+  getAll,
+  getById,
+  update,
+  remove,
+} from "../controllers/Client.controller";
+
+const router = Router();
+
+router.post("/", verifyJWT, create);
+
+router.get("/", verifyJWT, getAll);
+
+router.get("/:id", verifyJWT, getById);
+
+router.put("/:id", verifyJWT, update);
+
+router.delete("/:id", verifyJWT, remove);
+
+export default router;
+
+====================================================
+src\modules\client\services\Client.service.ts
+====================================================
+import { ApiError } from "../../../utils/ApiError";
+import { CreateClientDto } from "../dto/CreateClient.dto";
+import { UpdateClientDto } from "../dto/UpdateClient.dto";
+import clientRepository from "../repositories/Client.repository";
+
+class ClientService {
+  async createClient(
+    data: CreateClientDto,
+    userId: string
+  ) {
+    const existing = await clientRepository.findAll();
+
+    const emailExists = existing.find(
+      (client) => client.email === data.email
+    );
+
+    if (emailExists) {
+      throw new ApiError(400, "Client email already exists");
+    }
+
+    return clientRepository.create({
+      ...data,
+      createdBy: userId as any,
+    });
+  }
+
+  async getClients() {
+    return clientRepository.findAll();
+  }
+
+  async getClientById(id: string) {
+    const client = await clientRepository.findById(id);
+
+    if (!client) {
+      throw new ApiError(404, "Client not found");
+    }
+
+    return client;
+  }
+
+  async updateClient(
+    id: string,
+    data: UpdateClientDto
+  ) {
+    const client = await clientRepository.update(id, data);
+
+    if (!client) {
+      throw new ApiError(404, "Client not found");
+    }
+
+    return client;
+  }
+
+  async deleteClient(id: string) {
+    const client = await clientRepository.delete(id);
+
+    if (!client) {
+      throw new ApiError(404, "Client not found");
+    }
+
+    return;
+  }
+}
+
+export default new ClientService();
+
+====================================================
+src\modules\invoice\controllers\Invoice.controller.ts
+====================================================
+import { Request, Response, NextFunction } from "express";
+import { invoiceService } from "../services/Invoice.service";
+
+export class InvoiceController {
+  async createInvoice(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const createdBy = req.user!._id;
+
+      const invoice = await invoiceService.createInvoice(
+        req.body,
+        createdBy
+      );
+
+      return res.status(201).json({
+        success: true,
+        message: "Invoice created successfully.",
+        data: invoice,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getInvoices(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const invoices = await invoiceService.getInvoices();
+
+      return res.status(200).json({
+        success: true,
+        data: invoices,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getInvoiceById(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const invoice = await invoiceService.getInvoiceById(
+        String(req.params.id)
+      );
+
+      return res.status(200).json({
+        success: true,
+        data: invoice,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateInvoice(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const invoice = await invoiceService.updateInvoice(
+        String(req.params.id),
+        req.body
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Invoice updated successfully.",
+        data: invoice,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteInvoice(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      await invoiceService.deleteInvoice(
+        String(req.params.id)
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Invoice deleted successfully.",
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+}
+
+export const invoiceController = new InvoiceController();
+
+====================================================
+src\modules\invoice\dto\CreateInvoice.dto.ts
+====================================================
+import { InvoiceStatus } from "../models/Invoice.model";
+
+export interface CreateInvoiceItemDto {
+  name: string;
+  description?: string;
+  quantity: number;
+  price: number;
+  total: number;
+}
+
+export interface CreateInvoiceDto {
+  invoiceNumber: string;
+
+  client: string;
+
+  project?: string;
+
+  issueDate: Date;
+
+  dueDate: Date;
+
+  items: CreateInvoiceItemDto[];
+
+  subtotal: number;
+
+  discount?: number;
+
+  tax?: number;
+
+  total: number;
+
+  status?: InvoiceStatus;
+}
+
+====================================================
+src\modules\invoice\dto\UpdateInvoice.dto.ts
+====================================================
+import { CreateInvoiceDto } from "./CreateInvoice.dto";
+
+export type UpdateInvoiceDto = Partial<CreateInvoiceDto>;
+
+====================================================
+src\modules\invoice\models\Invoice.model.ts
+====================================================
+import { Document, model, Schema, Types } from "mongoose";
+
+export enum InvoiceStatus {
+  DRAFT = "draft",
+  SENT = "sent",
+  PAID = "paid",
+  OVERDUE = "overdue",
+}
+
+export interface InvoiceItem {
+  name: string;
+  description?: string;
+  quantity: number;
+  price: number;
+  total: number;
+}
+
+export interface InvoiceDocument extends Document {
+  invoiceNumber: string;
+
+  client: Types.ObjectId;
+
+  project?: Types.ObjectId;
+
+  issueDate: Date;
+
+  dueDate: Date;
+
+  items: InvoiceItem[];
+
+  subtotal: number;
+
+  discount: number;
+
+  tax: number;
+
+  total: number;
+
+  status: InvoiceStatus;
+
+  createdBy: Types.ObjectId;
+
+  createdAt: Date;
+
+  updatedAt: Date;
+}
+
+const InvoiceItemSchema = new Schema<InvoiceItem>(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    description: {
+      type: String,
+      trim: true,
+    },
+    quantity: {
+      type: Number,
+      required: true,
+      min: 1,
+    },
+    price: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    total: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+  },
+  {
+    _id: false,
+  }
+);
+
+const InvoiceSchema = new Schema<InvoiceDocument>(
+  {
+    invoiceNumber: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+    },
+
+    client: {
+      type: Schema.Types.ObjectId,
+      ref: "Client",
+      required: true,
+    },
+
+    project: {
+      type: Schema.Types.ObjectId,
+      ref: "Project",
+    },
+
+    issueDate: {
+      type: Date,
+      required: true,
+    },
+
+    dueDate: {
+      type: Date,
+      required: true,
+    },
+
+    items: {
+      type: [InvoiceItemSchema],
+      required: true,
+      default: [],
+    },
+
+    subtotal: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+
+    discount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    tax: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    total: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+
+    status: {
+      type: String,
+      enum: Object.values(InvoiceStatus),
+      default: InvoiceStatus.DRAFT,
+    },
+
+    createdBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+export const Invoice = model<InvoiceDocument>(
+  "Invoice",
+  InvoiceSchema
+);
+
+====================================================
+src\modules\invoice\repositories\Invoice.repository.ts
+====================================================
+import { Types } from "mongoose";
+
+import { Invoice } from "../models/Invoice.model";
+import { CreateInvoiceDto } from "../dto/CreateInvoice.dto";
+import { UpdateInvoiceDto } from "../dto/UpdateInvoice.dto";
+
+export class InvoiceRepository {
+  async create(
+    data: CreateInvoiceDto,
+    createdBy: Types.ObjectId
+  ) {
+    return Invoice.create({
+      ...data,
+      createdBy,
+    });
+  }
+
+  async findAll() {
+    return Invoice.find()
+      .populate("client")
+      .populate("project")
+      .populate("createdBy", "-password")
+      .sort({ createdAt: -1 });
+  }
+
+  async findById(id: string) {
+    return Invoice.findById(id)
+      .populate("client")
+      .populate("project")
+      .populate("createdBy", "-password");
+  }
+
+  async update(
+    id: string,
+    data: UpdateInvoiceDto
+  ) {
+    return Invoice.findByIdAndUpdate(id, data, {
+      new: true,
+      runValidators: true,
+    })
+      .populate("client")
+      .populate("project")
+      .populate("createdBy", "-password");
+  }
+
+  async delete(id: string) {
+    return Invoice.findByIdAndDelete(id);
+  }
+}
+
+export const invoiceRepository = new InvoiceRepository();
+
+====================================================
+src\modules\invoice\routes\Invoice.routes.ts
+====================================================
+import { Router } from "express";
+
+import { invoiceController } from "../controllers/Invoice.controller";
+import { authenticate } from "../../../middleware/jwt.middleware";
+
+const router = Router();
+
+router.post(
+  "/",
+  authenticate,
+  invoiceController.createInvoice.bind(invoiceController)
+);
+
+router.get(
+  "/",
+  authenticate,
+  invoiceController.getInvoices.bind(invoiceController)
+);
+
+router.get(
+  "/:id",
+  authenticate,
+  invoiceController.getInvoiceById.bind(invoiceController)
+);
+
+router.put(
+  "/:id",
+  authenticate,
+  invoiceController.updateInvoice.bind(invoiceController)
+);
+
+router.delete(
+  "/:id",
+  authenticate,
+  invoiceController.deleteInvoice.bind(invoiceController)
+);
+
+export default router;
+
+====================================================
+src\modules\invoice\services\Invoice.service.ts
+====================================================
+import { Types } from "mongoose";
+
+import { CreateInvoiceDto } from "../dto/CreateInvoice.dto";
+import { UpdateInvoiceDto } from "../dto/UpdateInvoice.dto";
+import { invoiceRepository } from "../repositories/Invoice.repository";
+
+export class InvoiceService {
+  async createInvoice(
+    data: CreateInvoiceDto,
+    createdBy: Types.ObjectId
+  ) {
+    return invoiceRepository.create(data, createdBy);
+  }
+
+  async getInvoices() {
+    return invoiceRepository.findAll();
+  }
+
+  async getInvoiceById(id: string) {
+    return invoiceRepository.findById(id);
+  }
+
+  async updateInvoice(
+    id: string,
+    data: UpdateInvoiceDto
+  ) {
+    return invoiceRepository.update(id, data);
+  }
+
+  async deleteInvoice(id: string) {
+    return invoiceRepository.delete(id);
+  }
+}
+
+export const invoiceService = new InvoiceService();
+
+====================================================
+src\modules\project\controllers\Project.controller.ts
+====================================================
+import {
+  NextFunction,
+  Request,
+  Response,
+} from "express";
+
+import projectService from "../services/Project.service";
+
+class ProjectController {
+  async create(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const project =
+        await projectService.createProject(
+          req.body,
+          req.user!._id.toString()
+        );
+
+      res.status(201).json({
+        success: true,
+        message:
+          "Project created successfully",
+        data: project,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getAll(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const projects =
+        await projectService.getProjects();
+
+      res.status(200).json({
+        success: true,
+        data: projects,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getById(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const project =
+        await projectService.getProjectById(
+          String(req.params.id)
+        );
+
+      res.status(200).json({
+        success: true,
+        data: project,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async update(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const project =
+        await projectService.updateProject(
+          String(req.params.id),
+          req.body
+        );
+
+      res.status(200).json({
+        success: true,
+        message:
+          "Project updated successfully",
+        data: project,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async delete(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      await projectService.deleteProject(
+        String(req.params.id)
+      );
+
+      res.status(200).json({
+        success: true,
+        message:
+          "Project deleted successfully",
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+}
+
+export default new ProjectController();
+
+====================================================
+src\modules\project\dto\CreateProject.dto.ts
+====================================================
+export interface CreateProjectDto {
+  title: string;
+
+  description?: string;
+
+  client: string;
+
+  status?: "planning" | "active" | "completed" | "on-hold";
+
+  priority?: "low" | "medium" | "high" | "critical";
+
+  budget?: number;
+
+  startDate: Date;
+
+  endDate: Date;
+
+  assignedTo?: string[];
+}
+
+====================================================
+src\modules\project\dto\UpdateProject.dto.ts
+====================================================
+export interface UpdateProjectDto {
+  title?: string;
+
+  description?: string;
+
+  client?: string;
+
+  status?: "planning" | "active" | "completed" | "on-hold";
+
+  priority?: "low" | "medium" | "high" | "critical";
+
+  budget?: number;
+
+  startDate?: Date;
+
+  endDate?: Date;
+
+  assignedTo?: string[];
+}
+
+====================================================
+src\modules\project\models\Project.model.ts
+====================================================
+import {
+  Schema,
+  model,
+  Document,
+  Types,
+} from "mongoose";
+
+export interface IProject extends Document {
+  title: string;
+
+  description: string;
+
+  client: Types.ObjectId;
+
+  status:
+    | "planning"
+    | "active"
+    | "completed"
+    | "on-hold";
+
+  priority:
+    | "low"
+    | "medium"
+    | "high"
+    | "critical";
+
+  budget: number;
+
+  startDate: Date;
+
+  endDate: Date;
+
+  createdBy: Types.ObjectId;
+
+  assignedTo: Types.ObjectId[];
+
+  createdAt: Date;
+
+  updatedAt: Date;
+}
+
+const ProjectSchema = new Schema<IProject>(
+  {
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    description: {
+      type: String,
+      default: "",
+    },
+
+    client: {
+      type: Schema.Types.ObjectId,
+      ref: "Client",
+      required: true,
+    },
+
+    status: {
+      type: String,
+      enum: [
+        "planning",
+        "active",
+        "completed",
+        "on-hold",
+      ],
+      default: "planning",
+    },
+
+    priority: {
+      type: String,
+      enum: [
+        "low",
+        "medium",
+        "high",
+        "critical",
+      ],
+      default: "medium",
+    },
+
+    budget: {
+      type: Number,
+      default: 0,
+    },
+
+    startDate: {
+      type: Date,
+      required: true,
+    },
+
+    endDate: {
+      type: Date,
+      required: true,
+    },
+
+    createdBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+
+    assignedTo: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+  },
+  {
+    timestamps: true,
+  }
+);
+
+export default model<IProject>(
+  "Project",
+  ProjectSchema
+);
+
+====================================================
+src\modules\project\repositories\Project.repository.ts
+====================================================
+import Project, { IProject } from "../models/Project.model";
+
+import { CreateProjectDto } from "../dto/CreateProject.dto";
+import { UpdateProjectDto } from "../dto/UpdateProject.dto";
+
+class ProjectRepository {
+  async create(data: Partial<IProject>) {
+    return Project.create(data);
+  }
+
+  async findAll() {
+    return Project.find()
+      .populate("createdBy", "firstName lastName email")
+      .populate("assignedTo", "firstName lastName email");
+  }
+
+  async findById(id: string) {
+    return Project.findById(id)
+      .populate("createdBy", "firstName lastName email")
+      .populate("assignedTo", "firstName lastName email");
+  }
+
+  async update(
+    id: string,
+    data: UpdateProjectDto
+  ) {
+    return Project.findByIdAndUpdate(id, data, {
+      new: true,
+    });
+  }
+
+  async delete(id: string) {
+    return Project.findByIdAndDelete(id);
+  }
+}
+
+export default new ProjectRepository();
+
+====================================================
+src\modules\project\routes\Project.routes.ts
+====================================================
+import { Router } from "express";
+
+import projectController from "../controllers/Project.controller";
+import { authenticate } from "../../../middleware/jwt.middleware";
+
+const router = Router();
+
+router.post(
+  "/",
+  authenticate,
+  projectController.create
+);
+
+router.get(
+  "/",
+  authenticate,
+  projectController.getAll
+);
+
+router.get(
+  "/:id",
+  authenticate,
+  projectController.getById
+);
+
+router.put(
+  "/:id",
+  authenticate,
+  projectController.update
+);
+
+router.delete(
+  "/:id",
+  authenticate,
+  projectController.delete
+);
+
+export default router;
+
+====================================================
+src\modules\project\services\Project.service.ts
+====================================================
+import { Types } from "mongoose";
+
+import projectRepository from "../repositories/Project.repository";
+
+import { CreateProjectDto } from "../dto/CreateProject.dto";
+import { UpdateProjectDto } from "../dto/UpdateProject.dto";
+
+import { ApiError } from "../../../utils/ApiError";
+
+class ProjectService {
+  async createProject(
+    data: CreateProjectDto,
+    userId: string
+  ) {
+    if (new Date(data.endDate) < new Date(data.startDate)) {
+      throw new ApiError(
+        400,
+        "End date cannot be before start date"
+      );
+    }
+
+    const assignedUsers =
+      data.assignedTo?.map(
+        (id) => new Types.ObjectId(id)
+      ) ?? [];
+
+    return projectRepository.create({
+      title: data.title,
+      description: data.description,
+      client: new Types.ObjectId(data.client),
+      status: data.status,
+      priority: data.priority,
+      budget: data.budget,
+      startDate: data.startDate,
+      endDate: data.endDate,
+      createdBy: new Types.ObjectId(userId),
+      assignedTo: assignedUsers,
+    });
+  }
+
+  async getProjects() {
+    return projectRepository.findAll();
+  }
+
+  async getProjectById(id: string) {
+    const project = await projectRepository.findById(id);
+
+    if (!project) {
+      throw new ApiError(
+        404,
+        "Project not found"
+      );
+    }
+
+    return project;
+  }
+
+  async updateProject(
+    id: string,
+    data: UpdateProjectDto
+  ) {
+    const updateData: Record<string, unknown> = {
+      ...data,
+    };
+
+    if (data.client) {
+      updateData.client = new Types.ObjectId(data.client);
+    }
+
+    if (data.assignedTo) {
+      updateData.assignedTo = data.assignedTo.map(
+        (id) => new Types.ObjectId(id)
+      );
+    }
+
+    const project = await projectRepository.update(
+      id,
+      updateData
+    );
+
+    if (!project) {
+      throw new ApiError(
+        404,
+        "Project not found"
+      );
+    }
+
+    return project;
+  }
+
+  async deleteProject(id: string) {
+    const project = await projectRepository.delete(id);
+
+    if (!project) {
+      throw new ApiError(
+        404,
+        "Project not found"
+      );
+    }
+  }
+}
+
+export default new ProjectService();
+
+====================================================
+src\modules\task\controllers\Task.controller.ts
+====================================================
+import {
+  NextFunction,
+  Request,
+  Response,
+} from "express";
+
+import taskService from "../services/Task.service";
+
+class TaskController {
+  async create(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const task = await taskService.createTask(
+        req.body,
+        req.user!._id.toString()
+      );
+
+      res.status(201).json({
+        success: true,
+        message: "Task created successfully",
+        data: task,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getAll(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const tasks = await taskService.getTasks();
+
+      res.status(200).json({
+        success: true,
+        data: tasks,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getById(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const task = await taskService.getTaskById(
+        String(req.params.id)
+      );
+
+      res.status(200).json({
+        success: true,
+        data: task,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async update(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const task = await taskService.updateTask(
+        String(req.params.id),
+        req.body
+      );
+
+      res.status(200).json({
+        success: true,
+        message: "Task updated successfully",
+        data: task,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async delete(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      await taskService.deleteTask(
+        String(req.params.id)
+      );
+
+      res.status(200).json({
+        success: true,
+        message: "Task deleted successfully",
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+}
+
+export default new TaskController();
+
+====================================================
+src\modules\task\dto\CreateTask.dto.ts
+====================================================
+export interface CreateTaskDto {
+  title: string;
+
+  description?: string;
+
+  status?:
+    | "todo"
+    | "in-progress"
+    | "review"
+    | "done";
+
+  priority?:
+    | "low"
+    | "medium"
+    | "high"
+    | "critical";
+
+  estimatedHours?: number;
+
+  dueDate: Date;
+
+  project: string;
+
+  assignedTo: string;
+}
+
+====================================================
+src\modules\task\dto\UpdateTask.dto.ts
+====================================================
+export interface UpdateTaskDto {
+  title?: string;
+
+  description?: string;
+
+  status?:
+    | "todo"
+    | "in-progress"
+    | "review"
+    | "done";
+
+  priority?:
+    | "low"
+    | "medium"
+    | "high"
+    | "critical";
+
+  estimatedHours?: number;
+
+  dueDate?: Date;
+
+  project?: string;
+
+  assignedTo?: string;
+}
+
+====================================================
+src\modules\task\models\Task.model.ts
+====================================================
+import {
+  Schema,
+  model,
+  Document,
+  Types,
+} from "mongoose";
+
+export interface ITask extends Document {
+  title: string;
+
+  description: string;
+
+  status:
+    | "todo"
+    | "in-progress"
+    | "review"
+    | "done";
+
+  priority:
+    | "low"
+    | "medium"
+    | "high"
+    | "critical";
+
+  estimatedHours: number;
+
+  dueDate: Date;
+
+  project: Types.ObjectId;
+
+  assignedTo: Types.ObjectId;
+
+  createdBy: Types.ObjectId;
+
+  createdAt: Date;
+
+  updatedAt: Date;
+}
+
+const TaskSchema = new Schema<ITask>(
+  {
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    description: {
+      type: String,
+      default: "",
+    },
+
+    status: {
+      type: String,
+      enum: [
+        "todo",
+        "in-progress",
+        "review",
+        "done",
+      ],
+      default: "todo",
+    },
+
+    priority: {
+      type: String,
+      enum: [
+        "low",
+        "medium",
+        "high",
+        "critical",
+      ],
+      default: "medium",
+    },
+
+    estimatedHours: {
+      type: Number,
+      default: 0,
+    },
+
+    dueDate: {
+      type: Date,
+      required: true,
+    },
+
+    project: {
+      type: Schema.Types.ObjectId,
+      ref: "Project",
+      required: true,
+    },
+
+    assignedTo: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+
+    createdBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+export default model<ITask>(
+  "Task",
+  TaskSchema
+);
+
+====================================================
+src\modules\task\repositories\Task.repository.ts
+====================================================
+import Task, { ITask } from "../models/Task.model";
+
+class TaskRepository {
+  async create(data: Partial<ITask>) {
+    return Task.create(data);
+  }
+
+  async findAll() {
+    return Task.find()
+      .populate("project")
+      .populate("assignedTo")
+      .populate("createdBy");
+  }
+
+  async findById(id: string) {
+    return Task.findById(id)
+      .populate("project")
+      .populate("assignedTo")
+      .populate("createdBy");
+  }
+
+  async update(
+    id: string,
+    data: Partial<ITask>
+  ) {
+    return Task.findByIdAndUpdate(id, data, {
+      new: true,
+    })
+      .populate("project")
+      .populate("assignedTo")
+      .populate("createdBy");
+  }
+
+  async delete(id: string) {
+    return Task.findByIdAndDelete(id);
+  }
+}
+
+export default new TaskRepository();
+
+====================================================
+src\modules\task\routes\Task.routes.ts
+====================================================
+import { Router } from "express";
+
+import taskController from "../controllers/Task.controller";
+import { authenticate } from "../../../middleware/jwt.middleware";
+
+const router = Router();
+
+router.post(
+  "/",
+  authenticate,
+  taskController.create
+);
+
+router.get(
+  "/",
+  authenticate,
+  taskController.getAll
+);
+
+router.get(
+  "/:id",
+  authenticate,
+  taskController.getById
+);
+
+router.put(
+  "/:id",
+  authenticate,
+  taskController.update
+);
+
+router.delete(
+  "/:id",
+  authenticate,
+  taskController.delete
+);
+
+export default router;
+
+====================================================
+src\modules\task\services\Task.service.ts
+====================================================
+import { Types } from "mongoose";
+
+import taskRepository from "../repositories/Task.repository";
+
+import { CreateTaskDto } from "../dto/CreateTask.dto";
+import { UpdateTaskDto } from "../dto/UpdateTask.dto";
+
+import { ApiError } from "../../../utils/ApiError";
+
+class TaskService {
+  async createTask(
+    data: CreateTaskDto,
+    userId: string
+  ) {
+    if (new Date(data.dueDate) < new Date()) {
+      throw new ApiError(
+        400,
+        "Due date cannot be in the past"
+      );
+    }
+
+    return taskRepository.create({
+      title: data.title,
+      description: data.description,
+      status: data.status,
+      priority: data.priority,
+      estimatedHours: data.estimatedHours,
+      dueDate: data.dueDate,
+      project: new Types.ObjectId(data.project),
+      assignedTo: new Types.ObjectId(data.assignedTo),
+      createdBy: new Types.ObjectId(userId),
+    });
+  }
+
+  async getTasks() {
+    return taskRepository.findAll();
+  }
+
+  async getTaskById(id: string) {
+    const task = await taskRepository.findById(id);
+
+    if (!task) {
+      throw new ApiError(
+        404,
+        "Task not found"
+      );
+    }
+
+    return task;
+  }
+
+  async updateTask(
+    id: string,
+    data: UpdateTaskDto
+  ) {
+    const updateData: any = { ...data };
+
+    if (data.project) {
+      updateData.project = new Types.ObjectId(
+        data.project
+      );
+    }
+
+    if (data.assignedTo) {
+      updateData.assignedTo = new Types.ObjectId(
+        data.assignedTo
+      );
+    }
+
+    const task = await taskRepository.update(
+      id,
+      updateData
+    );
+
+    if (!task) {
+      throw new ApiError(
+        404,
+        "Task not found"
+      );
+    }
+
+    return task;
+  }
+
+  async deleteTask(id: string) {
+    const task = await taskRepository.delete(id);
+
+    if (!task) {
+      throw new ApiError(
+        404,
+        "Task not found"
+      );
+    }
+
+    return;
+  }
+}
+
+export default new TaskService();
+
+====================================================
+src\modules\user\models\User.model.ts
+====================================================
+import { Schema, model, Document } from "mongoose";
+
+export interface IUser extends Document {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+
+  isVerified: boolean;
+  role: "user" | "admin";
+
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const userSchema = new Schema<IUser>(
+  {
+    firstName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    lastName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
+
+    password: {
+      type: String,
+      required: true,
+    },
+
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+export const User = model<IUser>("User", userSchema);
+
+====================================================
+src\routes\index.ts
+====================================================
+import { Router } from "express";
+
+import authRoutes from "../modules/auth/routes/Auth.routes";
+import adminRoutes from "../modules/admin/routes/Admin.routes";
+import clientRoutes from "../modules/client/routes/Client.routes";
+import projectRoutes from "../modules/project/routes/Project.routes";
+import taskRoutes from "../modules/task/routes/Task.routes";
+import invoiceRoutes from "../modules/invoice/routes/Invoice.routes";
+
+const router = Router();
+
+router.use("/auth", authRoutes);
+router.use("/admin", adminRoutes);
+router.use("/clients", clientRoutes);
+router.use("/projects", projectRoutes);
+router.use("/tasks", taskRoutes);
+router.use("/invoices", invoiceRoutes);
+
+export default router;
+
+====================================================
+src\types\express.d.ts
+====================================================
+import { Types } from "mongoose";
+
+declare global {
+  namespace Express {
+    interface UserPayload {
+      _id: Types.ObjectId;
+      email: string;
+      role: string;
+    }
+
+    interface Request {
+      user?: UserPayload;
+    }
+  }
+}
+
+export {};
+
+====================================================
+src\utils\ApiError.ts
+====================================================
+export class ApiError extends Error {
+  statusCode: number;
+
+  constructor(statusCode: number, message: string) {
+    super(message);
+
+    this.statusCode = statusCode;
+
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+
+====================================================
+src\utils\ApiResponse.ts
+====================================================
+export class ApiResponse<T> {
+  constructor(
+    public success: boolean,
+    public message: string,
+    public data?: T
+  ) {}
+}
+
+====================================================
+src\utils\logger.ts
+====================================================
+import winston from "winston";
+
+export const logger = winston.createLogger({
+  level: "info",
+
+  format: winston.format.combine(
+    winston.format.timestamp(),
+
+    winston.format.errors({
+      stack: true,
+    }),
+
+    winston.format.json()
+  ),
+
+  transports: [
+    new winston.transports.Console(),
+  ],
+});
+
+====================================================
+src\app.ts
+====================================================
+import express from "express";
+
+import cors from "cors";
+
+import helmet from "helmet";
+
+import compression from "compression";
+
+import cookieParser from "cookie-parser";
+
+import morgan from "morgan";
+
+import routes from "./routes";
+
+import { env } from "./config/env";
+
+import clientRoutes from "./modules/client/routes/Client.routes";
+
+import { errorMiddleware } from "./middleware/error.middleware";
+import taskRoutes from "../src/modules/task/routes/Task.routes";
+import projectRoutes from "./modules/project/routes/Project.routes";
+const app = express();
+
+app.use(
+  cors({
+    origin: env.CLIENT_URL,
+
+    credentials: true,
+  })
+);
+
+app.use(helmet());
+
+app.use(compression());
+
+app.use(cookieParser());
+
+app.use(morgan("dev"));
+
+app.use(express.json());
+
+app.use(express.urlencoded({ extended: true }));
+
+app.use("/api", routes);
+
+app.use("/api/projects", projectRoutes);
+
+app.use("/api/tasks", taskRoutes);
+
+app.use("/api/clients", clientRoutes);
+
+app.use(errorMiddleware);
+
+export default app;
+
+====================================================
+src\server.ts
+====================================================
+import app from "./app";
+
+import { connectDatabase } from "./config/db";
+
+import { env } from "./config/env";
+
+async function bootstrap() {
+  await connectDatabase();
+
+  app.listen(env.PORT, () => {
+    console.log(
+      `Server running on http://localhost:${env.PORT}`
+    );
+  });
+}
+
+bootstrap();
+

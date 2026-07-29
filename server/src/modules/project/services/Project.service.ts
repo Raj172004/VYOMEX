@@ -27,7 +27,7 @@ class ProjectService {
     return projectRepository.create({
       title: data.title,
       description: data.description,
-      client: data.client,
+      client: new Types.ObjectId(data.client),
       status: data.status,
       priority: data.priority,
       budget: data.budget,
@@ -59,11 +59,24 @@ class ProjectService {
     id: string,
     data: UpdateProjectDto
   ) {
-    const project =
-      await projectRepository.update(
-        id,
-        data
+    const updateData: Record<string, unknown> = {
+      ...data,
+    };
+
+    if (data.client) {
+      updateData.client = new Types.ObjectId(data.client);
+    }
+
+    if (data.assignedTo) {
+      updateData.assignedTo = data.assignedTo.map(
+        (id) => new Types.ObjectId(id)
       );
+    }
+
+    const project = await projectRepository.update(
+      id,
+      updateData
+    );
 
     if (!project) {
       throw new ApiError(
@@ -76,8 +89,7 @@ class ProjectService {
   }
 
   async deleteProject(id: string) {
-    const project =
-      await projectRepository.delete(id);
+    const project = await projectRepository.delete(id);
 
     if (!project) {
       throw new ApiError(

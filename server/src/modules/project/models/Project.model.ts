@@ -10,7 +10,7 @@ export interface IProject extends Document {
 
   description: string;
 
-  client: string;
+  client: Types.ObjectId;
 
   status:
     | "planning"
@@ -53,7 +53,8 @@ const ProjectSchema = new Schema<IProject>(
     },
 
     client: {
-      type: String,
+      type: Schema.Types.ObjectId,
+      ref: "Client",
       required: true,
     },
 
