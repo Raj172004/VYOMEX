@@ -7,27 +7,42 @@ import {
 
 export interface FindOptions {
   filter?: Record<string, any>;
+
   populate?:
     | string
     | string[]
     | PopulateOptions
     | PopulateOptions[];
+
   sort?: Record<string, 1 | -1>;
+
   select?: string;
+
+  page?: number;
+
+  limit?: number;
+
+  skip?: number;
 }
 
 export class BaseRepository<T extends Document> {
-  constructor(protected readonly model: Model<T>) {}
+  constructor(
+    protected readonly model: Model<T>
+  ) {}
 
-  async create(data: Partial<T>): Promise<T> {
+  async create(data: Partial<T>) {
     return this.model.create(data);
   }
 
-  async findAll(options?: FindOptions): Promise<T[]> {
-    let query: any = this.model.find(options?.filter ?? {});
+  async findAll(options?: FindOptions) {
+    let query: any = this.model.find(
+      options?.filter ?? {}
+    );
 
     if (options?.populate) {
-      query = query.populate(options.populate);
+      query = query.populate(
+        options.populate
+      );
     }
 
     if (options?.sort) {
@@ -35,7 +50,19 @@ export class BaseRepository<T extends Document> {
     }
 
     if (options?.select) {
-      query = query.select(options.select);
+      query = query.select(
+        options.select
+      );
+    }
+
+    if (options?.skip !== undefined) {
+      query = query.skip(options.skip);
+    }
+
+    if (options?.limit !== undefined) {
+      query = query.limit(
+        options.limit
+      );
     }
 
     return query.exec();
@@ -43,16 +70,24 @@ export class BaseRepository<T extends Document> {
 
   async findById(
     id: string,
-    options?: Omit<FindOptions, "filter">
-  ): Promise<T | null> {
-    let query: any = this.model.findById(id);
+    options?: Omit<
+      FindOptions,
+      "filter"
+    >
+  ) {
+    let query: any =
+      this.model.findById(id);
 
     if (options?.populate) {
-      query = query.populate(options.populate);
+      query = query.populate(
+        options.populate
+      );
     }
 
     if (options?.select) {
-      query = query.select(options.select);
+      query = query.select(
+        options.select
+      );
     }
 
     return query.exec();
@@ -60,36 +95,100 @@ export class BaseRepository<T extends Document> {
 
   async findOne(
     filter: Record<string, any>
-  ): Promise<T | null> {
-    return this.model.findOne(filter).exec();
+  ) {
+    return this.model
+      .findOne(filter)
+      .exec();
   }
 
   async update(
     id: string,
     data: UpdateQuery<T>
-  ): Promise<T | null> {
+  ) {
     return this.model
-      .findByIdAndUpdate(id, data, {
-        new: true,
-        runValidators: true,
-      })
+      .findByIdAndUpdate(
+        id,
+        data,
+        {
+          new: true,
+          runValidators: true,
+        }
+      )
       .exec();
   }
 
-  async delete(id: string): Promise<T | null> {
-    return this.model.findByIdAndDelete(id).exec();
+  async delete(id: string) {
+    return this.model
+      .findByIdAndDelete(id)
+      .exec();
   }
 
   async exists(
     filter: Record<string, any>
-  ): Promise<boolean> {
-    const result = await this.model.exists(filter);
-    return result !== null;
+  ) {
+    return this.model.exists(filter);
   }
 
   async count(
     filter: Record<string, any> = {}
-  ): Promise<number> {
-    return this.model.countDocuments(filter).exec();
+  ) {
+    return this.model
+      .countDocuments(filter)
+      .exec();
+  }
+
+  async paginate(
+    filter: Record<string, any>,
+    page = 1,
+    limit = 10,
+    sort: Record<
+      string,
+      1 | -1
+    > = {
+      createdAt: -1,
+    },
+    populate?:
+      | string
+      | string[]
+      | PopulateOptions
+      | PopulateOptions[]
+  ) {
+    const skip =
+      (page - 1) * limit;
+
+    let query: any =
+      this.model
+        .find(filter)
+        .sort(sort)
+        .skip(skip)
+        .limit(limit);
+
+    if (populate) {
+      query = query.populate(
+        populate
+      );
+    }
+
+    const [data, total] =
+      await Promise.all([
+        query.exec(),
+        this.model.countDocuments(
+          filter
+        ),
+      ]);
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(
+        total / limit
+      ),
+      hasNextPage:
+        page * limit < total,
+      hasPreviousPage:
+        page > 1,
+    };
   }
 }

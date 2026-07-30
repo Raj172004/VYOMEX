@@ -1,18 +1,16 @@
-import { PaginationResult } from "./PaginationResult";
+export class Pagination {
+  static calculate(
+    page = 1,
+    limit = 10
+  ) {
+    page = Math.max(1, page);
 
-export function paginate<T>(
-  data: T[],
-  total: number,
-  page: number,
-  limit: number
-): PaginationResult<T> {
-  return {
-    data,
-    total,
-    page,
-    limit,
-    totalPages: Math.ceil(total / limit),
-    hasNextPage: page * limit < total,
-    hasPreviousPage: page > 1,
-  };
+    limit = Math.max(1, limit);
+
+    return {
+      page,
+      limit,
+      skip: (page - 1) * limit,
+    };
+  }
 }
