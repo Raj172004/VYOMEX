@@ -34,7 +34,14 @@ class TaskController {
     next: NextFunction
   ) {
     try {
-      const tasks = await taskService.getTasks();
+      const hasQuery =
+        Object.keys(req.query).length > 0;
+
+      const tasks = hasQuery
+        ? await taskService.searchTasks(
+            req.query as any
+          )
+        : await taskService.getTasks();
 
       res.status(200).json({
         success: true,
@@ -51,9 +58,10 @@ class TaskController {
     next: NextFunction
   ) {
     try {
-      const task = await taskService.getTaskById(
-        String(req.params.id)
-      );
+      const task =
+        await taskService.getTaskById(
+          req.params.id as string
+        );
 
       res.status(200).json({
         success: true,
@@ -70,10 +78,11 @@ class TaskController {
     next: NextFunction
   ) {
     try {
-      const task = await taskService.updateTask(
-        String(req.params.id),
-        req.body
-      );
+      const task =
+        await taskService.updateTask(
+          req.params.id as string,
+          req.body
+        );
 
       res.status(200).json({
         success: true,
@@ -92,7 +101,7 @@ class TaskController {
   ) {
     try {
       await taskService.deleteTask(
-        String(req.params.id)
+        req.params.id as string
       );
 
       res.status(200).json({

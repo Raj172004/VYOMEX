@@ -4,6 +4,7 @@ import taskRepository from "../repositories/Task.repository";
 
 import { CreateTaskDto } from "../dto/CreateTask.dto";
 import { UpdateTaskDto } from "../dto/UpdateTask.dto";
+import { TaskQueryDto } from "../dto/TaskQuery.dto";
 
 import { ApiError } from "../../../utils/ApiError";
 
@@ -34,6 +35,12 @@ class TaskService {
 
   async getTasks() {
     return taskRepository.getAllTasks();
+  }
+
+  async searchTasks(
+    query: TaskQueryDto
+  ) {
+    return taskRepository.searchTasks(query);
   }
 
   async getTaskById(id: string) {

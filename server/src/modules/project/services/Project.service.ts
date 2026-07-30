@@ -4,6 +4,7 @@ import projectRepository from "../repositories/Project.repository";
 
 import { CreateProjectDto } from "../dto/CreateProject.dto";
 import { UpdateProjectDto } from "../dto/UpdateProject.dto";
+import { ProjectQueryDto } from "../dto/ProjectQuery.dto";
 
 import { ApiError } from "../../../utils/ApiError";
 
@@ -40,6 +41,12 @@ class ProjectService {
 
   async getProjects() {
     return projectRepository.getAllProjects();
+  }
+
+  async searchProjects(
+    query: ProjectQueryDto
+  ) {
+    return projectRepository.searchProjects(query);
   }
 
   async getProjectById(id: string) {

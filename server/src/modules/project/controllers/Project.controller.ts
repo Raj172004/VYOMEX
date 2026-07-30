@@ -21,8 +21,7 @@ class ProjectController {
 
       res.status(201).json({
         success: true,
-        message:
-          "Project created successfully",
+        message: "Project created successfully",
         data: project,
       });
     } catch (error) {
@@ -36,8 +35,14 @@ class ProjectController {
     next: NextFunction
   ) {
     try {
-      const projects =
-        await projectService.getProjects();
+      const hasQuery =
+        Object.keys(req.query).length > 0;
+
+      const projects = hasQuery
+        ? await projectService.searchProjects(
+            req.query as any
+          )
+        : await projectService.getProjects();
 
       res.status(200).json({
         success: true,
@@ -56,7 +61,7 @@ class ProjectController {
     try {
       const project =
         await projectService.getProjectById(
-          String(req.params.id)
+          req.params.id as string
         );
 
       res.status(200).json({
@@ -76,14 +81,13 @@ class ProjectController {
     try {
       const project =
         await projectService.updateProject(
-          String(req.params.id),
+          req.params.id as string,
           req.body
         );
 
       res.status(200).json({
         success: true,
-        message:
-          "Project updated successfully",
+        message: "Project updated successfully",
         data: project,
       });
     } catch (error) {
@@ -98,13 +102,12 @@ class ProjectController {
   ) {
     try {
       await projectService.deleteProject(
-        String(req.params.id)
+        req.params.id as string
       );
 
       res.status(200).json({
         success: true,
-        message:
-          "Project deleted successfully",
+        message: "Project deleted successfully",
       });
     } catch (error) {
       next(error);

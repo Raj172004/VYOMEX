@@ -24,12 +24,16 @@ export const create = async (
 };
 
 export const getAll = async (
-  _: Request,
+  req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const clients = await clientService.getClients();
+    const hasQuery = Object.keys(req.query).length > 0;
+
+    const clients = hasQuery
+      ? await clientService.searchClients(req.query as any)
+      : await clientService.getClients();
 
     res.json({
       success: true,

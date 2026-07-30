@@ -2,6 +2,7 @@ import { ApiError } from "../../../utils/ApiError";
 
 import { CreateClientDto } from "../dto/CreateClient.dto";
 import { UpdateClientDto } from "../dto/UpdateClient.dto";
+import { ClientQueryDto } from "../dto/ClientQuery.dto";
 
 import clientRepository from "../repositories/Client.repository";
 
@@ -28,6 +29,12 @@ class ClientService {
 
   async getClients() {
     return clientRepository.getAllClients();
+  }
+
+  async searchClients(
+    query: ClientQueryDto
+  ) {
+    return clientRepository.searchClients(query);
   }
 
   async getClientById(id: string) {
