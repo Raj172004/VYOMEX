@@ -1,4 +1,9 @@
-import { Request, Response, NextFunction } from "express";
+import {
+  Request,
+  Response,
+  NextFunction,
+} from "express";
+
 import { invoiceService } from "../services/Invoice.service";
 
 export class InvoiceController {
@@ -10,10 +15,11 @@ export class InvoiceController {
     try {
       const createdBy = req.user!._id;
 
-      const invoice = await invoiceService.createInvoice(
-        req.body,
-        createdBy
-      );
+      const invoice =
+        await invoiceService.createInvoice(
+          req.body,
+          createdBy
+        );
 
       return res.status(201).json({
         success: true,
@@ -31,7 +37,14 @@ export class InvoiceController {
     next: NextFunction
   ) {
     try {
-      const invoices = await invoiceService.getInvoices();
+      const hasQuery =
+        Object.keys(req.query).length > 0;
+
+      const invoices = hasQuery
+        ? await invoiceService.searchInvoices(
+            req.query as any
+          )
+        : await invoiceService.getInvoices();
 
       return res.status(200).json({
         success: true,
@@ -48,9 +61,10 @@ export class InvoiceController {
     next: NextFunction
   ) {
     try {
-      const invoice = await invoiceService.getInvoiceById(
-        String(req.params.id)
-      );
+      const invoice =
+        await invoiceService.getInvoiceById(
+          req.params.id as string
+        );
 
       return res.status(200).json({
         success: true,
@@ -67,10 +81,11 @@ export class InvoiceController {
     next: NextFunction
   ) {
     try {
-      const invoice = await invoiceService.updateInvoice(
-        String(req.params.id),
-        req.body
-      );
+      const invoice =
+        await invoiceService.updateInvoice(
+          req.params.id as string,
+          req.body
+        );
 
       return res.status(200).json({
         success: true,
@@ -89,7 +104,7 @@ export class InvoiceController {
   ) {
     try {
       await invoiceService.deleteInvoice(
-        String(req.params.id)
+        req.params.id as string
       );
 
       return res.status(200).json({
@@ -102,4 +117,5 @@ export class InvoiceController {
   }
 }
 
-export const invoiceController = new InvoiceController();
+export const invoiceController =
+  new InvoiceController();

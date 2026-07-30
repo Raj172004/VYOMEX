@@ -2,6 +2,7 @@ import { Types } from "mongoose";
 
 import { CreateInvoiceDto } from "../dto/CreateInvoice.dto";
 import { UpdateInvoiceDto } from "../dto/UpdateInvoice.dto";
+import { InvoiceQueryDto } from "../dto/InvoiceQuery.dto";
 
 import invoiceRepository from "../repositories/Invoice.repository";
 
@@ -18,6 +19,12 @@ export class InvoiceService {
 
   async getInvoices() {
     return invoiceRepository.getAllInvoices();
+  }
+
+  async searchInvoices(
+    query: InvoiceQueryDto
+  ) {
+    return invoiceRepository.searchInvoices(query);
   }
 
   async getInvoiceById(id: string) {

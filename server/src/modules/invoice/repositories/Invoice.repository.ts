@@ -1,6 +1,9 @@
 import { Types } from "mongoose";
 
 import { BaseRepository } from "../../../common/database/BaseRepository";
+import { QueryBuilder } from "../../../common/query/QueryBuilder";
+import { SearchBuilder } from "../../../common/query/SearchBuilder";
+import { FilterBuilder } from "../../../common/query/FilterBuilder";
 
 import {
   Invoice,
@@ -9,6 +12,7 @@ import {
 
 import { CreateInvoiceDto } from "../dto/CreateInvoice.dto";
 import { UpdateInvoiceDto } from "../dto/UpdateInvoice.dto";
+import { InvoiceQueryDto } from "../dto/InvoiceQuery.dto";
 
 class InvoiceRepository extends BaseRepository<InvoiceDocument> {
   constructor() {
@@ -16,37 +20,37 @@ class InvoiceRepository extends BaseRepository<InvoiceDocument> {
   }
 
   async createInvoice(
-  data: CreateInvoiceDto,
-  createdBy: Types.ObjectId
-) {
-  return this.create({
-    invoiceNumber: data.invoiceNumber,
+    data: CreateInvoiceDto,
+    createdBy: Types.ObjectId
+  ) {
+    return this.create({
+      invoiceNumber: data.invoiceNumber,
 
-    client: new Types.ObjectId(data.client),
+      client: new Types.ObjectId(data.client),
 
-    project: data.project
-      ? new Types.ObjectId(data.project)
-      : undefined,
+      project: data.project
+        ? new Types.ObjectId(data.project)
+        : undefined,
 
-    issueDate: data.issueDate,
+      issueDate: data.issueDate,
 
-    dueDate: data.dueDate,
+      dueDate: data.dueDate,
 
-    items: data.items,
+      items: data.items,
 
-    subtotal: data.subtotal,
+      subtotal: data.subtotal,
 
-    tax: data.tax,
+      tax: data.tax,
 
-    discount: data.discount,
+      discount: data.discount,
 
-    total: data.total,
+      total: data.total,
 
-    status: data.status,
+      status: data.status,
 
-    createdBy,
-  } as Partial<InvoiceDocument>);
-}
+      createdBy,
+    } as Partial<InvoiceDocument>);
+  }
 
   async getAllInvoices() {
     return this.findAll({
@@ -66,6 +70,65 @@ class InvoiceRepository extends BaseRepository<InvoiceDocument> {
         createdAt: -1,
       },
     });
+  }
+
+  async searchInvoices(
+    query: InvoiceQueryDto
+  ) {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      client,
+      project,
+      status,
+      invoiceNumber,
+      sortBy = "createdAt",
+      order = "desc",
+    } = query;
+
+    const pagination = QueryBuilder.build({
+      page,
+      limit,
+      sortBy,
+      order,
+    });
+
+    const searchFilter = SearchBuilder.build(
+      search,
+      ["invoiceNumber"]
+    );
+
+    const filters = FilterBuilder.build({
+      client,
+      project,
+      status,
+      invoiceNumber,
+    });
+
+    const filter: Record<string, unknown> = {
+      ...searchFilter,
+      ...filters,
+    };
+
+    return this.paginate(
+      filter,
+      pagination.page,
+      pagination.limit,
+      pagination.sort,
+      [
+        {
+          path: "client",
+        },
+        {
+          path: "project",
+        },
+        {
+          path: "createdBy",
+          select: "-password",
+        },
+      ]
+    );
   }
 
   async getInvoiceById(id: string) {
