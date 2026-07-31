@@ -1,7 +1,6 @@
 import { Router } from "express";
 
 import { upload } from "../../../common/uploads/multer";
-
 import uploadController from "../controllers/Upload.controller";
 
 const router = Router();
@@ -16,6 +15,12 @@ router.post(
   "/avatar",
   upload.single("avatar"),
   uploadController.uploadAvatar
+);
+
+router.post(
+  "/multiple",
+  upload.array("files", 10),
+  uploadController.uploadMultiple
 );
 
 export default router;
