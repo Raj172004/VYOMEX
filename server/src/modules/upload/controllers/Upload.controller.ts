@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 
 import uploadService from "../services/Upload.service";
+import { UploadValidator } from "../validators/Upload.validator";
 
 class UploadController {
   async uploadSingle(
@@ -20,6 +21,24 @@ class UploadController {
         success: true,
         message: "File uploaded successfully.",
         data: uploadService.getFileInfo(req.file),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async uploadAvatar(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      UploadValidator.validateAvatar(req.file);
+
+      return res.status(201).json({
+        success: true,
+        message: "Avatar uploaded successfully.",
+        data: uploadService.getFileInfo(req.file!),
       });
     } catch (error) {
       next(error);
