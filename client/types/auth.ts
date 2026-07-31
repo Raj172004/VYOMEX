@@ -1,6 +1,7 @@
 export interface User {
   _id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   role: "admin" | "client";
   avatar?: string;
@@ -12,16 +13,21 @@ export interface LoginRequest {
 }
 
 export interface RegisterRequest {
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
 }
 
-export interface AuthResponse {
-  success: boolean;
-  token: string;
-  refreshToken?: string;
+export interface LoginData {
   user: User;
+  accessToken: string;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
 }
 
 export interface AuthState {
@@ -30,7 +36,7 @@ export interface AuthState {
   loading: boolean;
   authenticated: boolean;
 
-  login: (data: AuthResponse) => void;
+  login: (data: LoginData) => void;
   logout: () => void;
   setLoading: (loading: boolean) => void;
 }

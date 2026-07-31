@@ -8,6 +8,7 @@ import taskRoutes from "../modules/task/routes/Task.routes";
 import invoiceRoutes from "../modules/invoice/routes/Invoice.routes";
 import dashboardRoutes from "../modules/dashboard/routes/Dashboard.routes";
 import uploadRoutes from "../modules/upload/routes/Upload.routes";
+import notificationRoutes from "../modules/notification/routes/Notification.routes";
 
 const router = Router();
 
@@ -26,5 +27,10 @@ router.use("/invoices", invoiceRoutes);
 router.use("/dashboard", dashboardRoutes);
 
 router.use("/upload", uploadRoutes);
+
+router.use(
+  "/notifications",
+  notificationRoutes
+);
 
 export default router;

@@ -41,21 +41,20 @@ export default function LoginForm() {
   });
 
   async function onSubmit(values: LoginSchema) {
-    try {
-      setLoading(true);
+  try {
+    setLoading(true);
 
-      const response = await AuthService.login(values);
+    const response = await AuthService.login(values);
 
-      login(response.data);
-    } catch {
-      setError("root", {
-        message: "Invalid email or password.",
-      });
-    } finally {
-      setLoading(false);
-    }
+    login(response.data.data);
+  } catch {
+    setError("root", {
+      message: "Invalid email or password.",
+    });
+  } finally {
+    setLoading(false);
   }
-
+}
   return (
     <AuthCard>
       <AuthHeader

@@ -1,7 +1,9 @@
 import { UploadResponseDto } from "../dto/UploadResponse.dto";
-import fileStorageHelper from "../helpers/FileStorage.helper";
+import storageFactory from "../storage/StorageFactory";
 
 class UploadService {
+  private readonly storage = storageFactory.getProvider();
+
   public getFileInfo(file: Express.Multer.File): UploadResponseDto {
     const normalizedPath = file.path.replace(/\\/g, "/");
 
@@ -22,7 +24,11 @@ class UploadService {
   }
 
   public deleteFile(filePath: string): boolean {
-    return fileStorageHelper.deleteFile(filePath);
+    return this.storage.delete(filePath);
+  }
+
+  public fileExists(filePath: string): boolean {
+    return this.storage.exists(filePath);
   }
 }
 

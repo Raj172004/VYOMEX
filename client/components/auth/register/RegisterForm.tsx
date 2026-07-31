@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Mail, User } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -26,7 +27,9 @@ import {
 } from "@/components/ui/form";
 
 export default function RegisterForm() {
-  const { login, setLoading } = useAuth();
+  const router = useRouter();
+
+  const { setLoading } = useAuth();
 
   const {
     register,
@@ -36,7 +39,8 @@ export default function RegisterForm() {
   } = useForm<RegisterSchema>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      name: "",
+      firstName: "",
+      lastName: "",
       email: "",
       password: "",
     },
@@ -46,10 +50,9 @@ export default function RegisterForm() {
     try {
       setLoading(true);
 
-      const response =
-        await AuthService.register(values);
+      await AuthService.register(values);
 
-      login(response.data);
+      router.push("/login");
     } catch {
       setError("root", {
         message:
@@ -73,11 +76,19 @@ export default function RegisterForm() {
         className="mt-10 space-y-6"
       >
         <Input
-          label="Full Name"
+          label="First Name"
           icon={User}
-          placeholder="John Doe"
-          error={errors.name?.message}
-          {...register("name")}
+          placeholder="John"
+          error={errors.firstName?.message}
+          {...register("firstName")}
+        />
+
+        <Input
+          label="Last Name"
+          icon={User}
+          placeholder="Doe"
+          error={errors.lastName?.message}
+          {...register("lastName")}
         />
 
         <Input

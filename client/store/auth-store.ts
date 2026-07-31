@@ -7,8 +7,8 @@ import {
 } from "@/lib/auth/tokens";
 
 import {
-  AuthResponse,
   AuthState,
+  LoginData,
 } from "@/types/auth";
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -20,11 +20,11 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   loading: false,
 
-  login: (data: AuthResponse) => {
-    setTokens(data.token, data.refreshToken);
+  login: (data: LoginData) => {
+    setTokens(data.accessToken);
 
     set({
-      token: data.token,
+      token: data.accessToken,
       authenticated: true,
       user: data.user,
       loading: false,
