@@ -4,7 +4,7 @@ import uploadService from "../services/Upload.service";
 import { UploadValidator } from "../validators/Upload.validator";
 
 class UploadController {
-  async uploadSingle(
+  public async uploadSingle(
     req: Request,
     res: Response,
     next: NextFunction
@@ -27,7 +27,7 @@ class UploadController {
     }
   }
 
-  async uploadAvatar(
+  public async uploadAvatar(
     req: Request,
     res: Response,
     next: NextFunction
@@ -45,7 +45,7 @@ class UploadController {
     }
   }
 
-  async uploadMultiple(
+  public async uploadMultiple(
     req: Request,
     res: Response,
     next: NextFunction
@@ -65,6 +65,39 @@ class UploadController {
         message: "Files uploaded successfully.",
         count: files.length,
         data: uploadService.getFilesInfo(files),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  public async deleteFile(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const { path } = req.body;
+
+      if (!path) {
+        return res.status(400).json({
+          success: false,
+          message: "File path is required.",
+        });
+      }
+
+      const deleted = uploadService.deleteFile(path);
+
+      if (!deleted) {
+        return res.status(404).json({
+          success: false,
+          message: "File not found.",
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "File deleted successfully.",
       });
     } catch (error) {
       next(error);

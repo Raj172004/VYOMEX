@@ -23,4 +23,9 @@ router.post(
   uploadController.uploadMultiple
 );
 
+router.delete(
+  "/file",
+  uploadController.deleteFile
+);
+
 export default router;

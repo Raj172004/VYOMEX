@@ -1,4 +1,5 @@
 import { UploadResponseDto } from "../dto/UploadResponse.dto";
+import fileStorageHelper from "../helpers/FileStorage.helper";
 
 class UploadService {
   public getFileInfo(file: Express.Multer.File): UploadResponseDto {
@@ -18,6 +19,10 @@ class UploadService {
 
   public getFilesInfo(files: Express.Multer.File[]): UploadResponseDto[] {
     return files.map((file) => this.getFileInfo(file));
+  }
+
+  public deleteFile(filePath: string): boolean {
+    return fileStorageHelper.deleteFile(filePath);
   }
 }
 
