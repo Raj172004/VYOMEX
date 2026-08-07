@@ -7,6 +7,8 @@ export const create = async (
   res: Response,
   next: NextFunction
 ) => {
+  console.log("🔥 CLIENT CONTROLLER EXECUTED 🔥");
+
   try {
     const client = await clientService.createClient(
       req.body,

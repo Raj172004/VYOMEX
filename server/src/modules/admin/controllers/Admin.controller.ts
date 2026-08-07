@@ -1,19 +1,25 @@
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
+
+import adminService from "../services/Admin.service";
 
 class AdminController {
-  dashboard(
+  async dashboard(
     req: Request,
-    res: Response
+    res: Response,
+    next: NextFunction
   ) {
-    return res.status(200).json({
-      success: true,
-      message: "Welcome Admin",
-      data: {
-        totalUsers: 125,
-        totalProjects: 48,
-        totalRevenue: 152000,
-      },
-    });
+    try {
+      const stats =
+        await adminService.getDashboard();
+
+      return res.status(200).json({
+        success: true,
+        message: "Admin dashboard fetched successfully",
+        data: stats,
+      });
+    } catch (error) {
+      next(error);
+    }
   }
 }
 
