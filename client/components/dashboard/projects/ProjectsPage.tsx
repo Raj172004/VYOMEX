@@ -124,9 +124,19 @@ export default function ProjectsPage() {
     setModalOpen(true);
   }
 
-  function openEditModal(project: Project) {
-    setEditingProject(project);
-    setModalOpen(true);
+  async function openEditModal(project: Project) {
+    try {
+      setError("");
+
+      const response = await ProjectService.getById(project._id);
+      const freshProject = response.data.data;
+
+      setEditingProject(freshProject);
+      setModalOpen(true);
+    } catch (error) {
+      console.error("Failed to load project for editing:", error);
+      setError("Unable to load project details. Please try again.");
+    }
   }
 
   function handleSaved(project: Project) {
@@ -476,3 +486,4 @@ function formatCurrency(value: number) {
     maximumFractionDigits: 0,
   }).format(value);
 }
+

@@ -28,3 +28,5 @@ build/
 Thumbs.db
 
 archive/
+# AI project context snapshot
+VYOMEX_CONTEXT/
