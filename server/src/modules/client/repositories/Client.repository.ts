@@ -15,11 +15,15 @@ class ClientRepository extends BaseRepository<IClient> {
   }
 
   async findByEmail(email: string) {
-    return this.findOne({ email });
+    return this.findOne({
+      email,
+    });
   }
 
   async findByCompany(company: string) {
-    return this.findOne({ company });
+    return this.findOne({
+      company,
+    });
   }
 
   async getAllClients() {
@@ -57,6 +61,7 @@ class ClientRepository extends BaseRepository<IClient> {
       search,
       company,
       email,
+      status,
       sortBy = "createdAt",
       order = "desc",
     } = query;
@@ -68,15 +73,20 @@ class ClientRepository extends BaseRepository<IClient> {
       order,
     });
 
-    const searchFilter = SearchBuilder.build(search, [
-      "name",
-      "company",
-      "email",
-    ]);
+    const searchFilter = SearchBuilder.build(
+      search,
+      [
+        "firstName",
+        "lastName",
+        "company",
+        "email",
+      ]
+    );
 
     const filters = FilterBuilder.build({
       company,
       email,
+      status,
     });
 
     const filter: Record<string, unknown> = {

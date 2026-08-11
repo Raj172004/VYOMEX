@@ -1,6 +1,7 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Mail } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -9,6 +10,7 @@ import {
   loginSchema,
   type LoginSchema,
 } from "@/schemas/login.schema";
+
 import { AuthService } from "@/services/auth/auth.service";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -25,6 +27,8 @@ import {
 } from "@/components/ui/form";
 
 export default function LoginForm() {
+  const router = useRouter();
+
   const { login, setLoading } = useAuth();
 
   const {
@@ -41,20 +45,23 @@ export default function LoginForm() {
   });
 
   async function onSubmit(values: LoginSchema) {
-  try {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    const response = await AuthService.login(values);
+      const response = await AuthService.login(values);
 
-    login(response.data.data);
-  } catch {
-    setError("root", {
-      message: "Invalid email or password.",
-    });
-  } finally {
-    setLoading(false);
+      login(response.data.data);
+
+      router.replace("/dashboard");
+    } catch {
+      setError("root", {
+        message: "Invalid email or password.",
+      });
+    } finally {
+      setLoading(false);
+    }
   }
-}
+
   return (
     <AuthCard>
       <AuthHeader
@@ -70,7 +77,7 @@ export default function LoginForm() {
         <Input
           label="Email Address"
           type="email"
-          placeholder="john@example.com"
+          placeholder="Enter your email"
           icon={Mail}
           error={errors.email?.message}
           {...register("email")}
@@ -80,6 +87,7 @@ export default function LoginForm() {
           label="Password"
           placeholder="Enter password"
           error={errors.password?.message}
+          {...register("password")}
         />
 
         <FormError

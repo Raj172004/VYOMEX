@@ -1,4 +1,4 @@
-import {
+﻿import {
   Document,
   Model,
   PopulateOptions,
@@ -110,7 +110,7 @@ export class BaseRepository<T extends Document> {
         id,
         data,
         {
-          new: true,
+          returnDocument: "after",
           runValidators: true,
         }
       )

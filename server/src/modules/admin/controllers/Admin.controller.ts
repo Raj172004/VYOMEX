@@ -1,4 +1,8 @@
-import { Request, Response, NextFunction } from "express";
+import {
+  Request,
+  Response,
+  NextFunction,
+} from "express";
 
 import adminService from "../services/Admin.service";
 
@@ -14,7 +18,8 @@ class AdminController {
 
       return res.status(200).json({
         success: true,
-        message: "Admin dashboard fetched successfully",
+        message:
+          "Dashboard fetched successfully",
         data: stats,
       });
     } catch (error) {

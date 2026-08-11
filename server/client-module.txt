@@ -1,0 +1,516 @@
+﻿
+==============================
+E:\VYOMEX\server\src\modules\client\controllers\Client.controller.ts
+==============================
+import { Request, Response, NextFunction } from "express";
+
+import clientService from "../services/Client.service";
+
+export const create = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  console.log("ðŸ”¥ CLIENT CONTROLLER EXECUTED ðŸ”¥");
+
+  try {
+    const client = await clientService.createClient(
+      req.body,
+      req.user!._id.toString()
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "Client created successfully",
+      data: client,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAll = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const hasQuery = Object.keys(req.query).length > 0;
+
+    const clients = hasQuery
+      ? await clientService.searchClients(req.query as any)
+      : await clientService.getClients();
+
+    res.json({
+      success: true,
+      data: clients,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const id = req.params.id as string;
+
+    const client = await clientService.getClientById(id);
+
+    res.json({
+      success: true,
+      data: client,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const update = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const id = req.params.id as string;
+
+    const client = await clientService.updateClient(
+      id,
+      req.body
+    );
+
+    res.json({
+      success: true,
+      message: "Client updated successfully",
+      data: client,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const remove = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const id = req.params.id as string;
+
+    await clientService.deleteClient(id);
+
+    res.json({
+      success: true,
+      message: "Client deleted successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+==============================
+E:\VYOMEX\server\src\modules\client\dto\ClientQuery.dto.ts
+==============================
+import { PaginationQueryDto } from "../../../common/dto/PaginationQuery.dto";
+
+export class ClientQueryDto extends PaginationQueryDto {
+  company?: string;
+
+  email?: string;
+
+  status?: string;
+}
+
+==============================
+E:\VYOMEX\server\src\modules\client\dto\CreateClient.dto.ts
+==============================
+export interface CreateClientDto {
+  firstName: string;
+  lastName: string;
+  company: string;
+  email: string;
+  phone?: string;
+  website?: string;
+  industry?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+  status?: "active" | "inactive";
+  notes?: string;
+}
+
+==============================
+E:\VYOMEX\server\src\modules\client\dto\UpdateClient.dto.ts
+==============================
+export interface UpdateClientDto {
+  firstName?: string;
+  lastName?: string;
+  company?: string;
+  email?: string;
+  phone?: string;
+  website?: string;
+  industry?: string;
+ address?: string;
+  city?: string;
+  country?: string;
+  status?: "active" | "inactive";
+  notes?: string;
+}
+
+==============================
+E:\VYOMEX\server\src\modules\client\models\Client.model.ts
+==============================
+import { Document, model, Schema } from "mongoose";
+
+export interface IClient extends Document {
+  firstName: string;
+  lastName: string;
+  company: string;
+  email: string;
+  phone: string;
+  website: string;
+  industry: string;
+  address: string;
+  city: string;
+  country: string;
+  status: "active" | "inactive";
+  notes: string;
+  createdBy: Schema.Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const ClientSchema = new Schema<IClient>(
+  {
+    firstName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    lastName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    company: {
+      type: String,
+      required: true,
+    },
+
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+
+    phone: {
+      type: String,
+      default: "",
+    },
+
+    website: {
+      type: String,
+      default: "",
+    },
+
+    industry: {
+      type: String,
+      default: "",
+    },
+
+    address: {
+      type: String,
+      default: "",
+    },
+
+    city: {
+      type: String,
+      default: "",
+    },
+
+    country: {
+      type: String,
+      default: "",
+    },
+
+    status: {
+      type: String,
+      enum: ["active", "inactive"],
+      default: "active",
+    },
+
+    notes: {
+      type: String,
+      default: "",
+    },
+
+    createdBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+export default model<IClient>(
+  "Client",
+  ClientSchema
+);
+
+==============================
+E:\VYOMEX\server\src\modules\client\repositories\Client.repository.ts
+==============================
+import { BaseRepository } from "../../../common/database/BaseRepository";
+import { QueryBuilder } from "../../../common/query/QueryBuilder";
+import { SearchBuilder } from "../../../common/query/SearchBuilder";
+import { FilterBuilder } from "../../../common/query/FilterBuilder";
+
+import ClientModel, {
+  IClient,
+} from "../models/Client.model";
+
+import { ClientQueryDto } from "../dto/ClientQuery.dto";
+
+class ClientRepository extends BaseRepository<IClient> {
+  constructor() {
+    super(ClientModel);
+  }
+
+  async findByEmail(email: string) {
+    return this.findOne({ email });
+  }
+
+  async findByCompany(company: string) {
+    return this.findOne({ company });
+  }
+
+  async getAllClients() {
+    return this.findAll({
+      populate: "createdBy",
+      sort: {
+        createdAt: -1,
+      },
+    });
+  }
+
+  async getClientById(id: string) {
+    return this.findById(id, {
+      populate: "createdBy",
+    });
+  }
+
+  async updateClient(
+    id: string,
+    data: Partial<IClient>
+  ) {
+    return this.update(id, data);
+  }
+
+  async deleteClient(id: string) {
+    return this.delete(id);
+  }
+
+  async searchClients(
+    query: ClientQueryDto
+  ) {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      company,
+      email,
+      sortBy = "createdAt",
+      order = "desc",
+    } = query;
+
+    const pagination = QueryBuilder.build({
+      page,
+      limit,
+      sortBy,
+      order,
+    });
+
+    const searchFilter = SearchBuilder.build(search, [
+      "name",
+      "company",
+      "email",
+    ]);
+
+    const filters = FilterBuilder.build({
+      company,
+      email,
+    });
+
+    const filter: Record<string, unknown> = {
+      ...searchFilter,
+      ...filters,
+    };
+
+    return this.paginate(
+      filter,
+      pagination.page,
+      pagination.limit,
+      pagination.sort,
+      "createdBy"
+    );
+  }
+}
+
+export default new ClientRepository();
+
+==============================
+E:\VYOMEX\server\src\modules\client\routes\Client.routes.ts
+==============================
+import { Router } from "express";
+
+import { verifyJWT } from "../../../middleware/jwt.middleware";
+
+import {
+  create,
+  getAll,
+  getById,
+  update,
+  remove,
+} from "../controllers/Client.controller";
+
+const router = Router();
+
+router.post("/", verifyJWT, create);
+
+router.get("/", verifyJWT, getAll);
+
+router.get("/:id", verifyJWT, getById);
+
+router.put("/:id", verifyJWT, update);
+
+router.delete("/:id", verifyJWT, remove);
+
+export default router;
+
+==============================
+E:\VYOMEX\server\src\modules\client\services\Client.service.ts
+==============================
+import { ApiError } from "../../../utils/ApiError";
+
+import { CreateClientDto } from "../dto/CreateClient.dto";
+import { UpdateClientDto } from "../dto/UpdateClient.dto";
+import { ClientQueryDto } from "../dto/ClientQuery.dto";
+
+import clientRepository from "../repositories/Client.repository";
+import notificationService from "../../notification/services/Notification.service";
+
+class ClientService {
+  async createClient(
+    data: CreateClientDto,
+    userId: string
+  ) {
+    const existingClient =
+      await clientRepository.findByEmail(data.email);
+
+    if (existingClient) {
+      throw new ApiError(
+        400,
+        "Client email already exists"
+      );
+    }
+
+    const client =
+      await clientRepository.create({
+        ...data,
+        createdBy: userId as any,
+      });
+
+    console.log("\n========================================");
+    console.log("âœ… CLIENT CREATED");
+    console.log("Client ID:", client._id);
+    console.log("Company:", client.company);
+    console.log("User ID:", userId);
+    console.log("========================================");
+
+    const notification =
+      await notificationService.create({
+        title: "New Client",
+        message: `Client "${client.company}" has been created successfully.`,
+        type: "success",
+        isRead: false,
+        user: userId,
+      });
+
+    console.log("\n========================================");
+    console.log("âœ… NOTIFICATION CREATED");
+    console.log(notification);
+    console.log("========================================\n");
+
+    return client;
+  }
+
+  async getClients() {
+    return clientRepository.getAllClients();
+  }
+
+  async searchClients(
+    query: ClientQueryDto
+  ) {
+    return clientRepository.searchClients(query);
+  }
+
+  async getClientById(id: string) {
+    const client =
+      await clientRepository.getClientById(id);
+
+    if (!client) {
+      throw new ApiError(
+        404,
+        "Client not found"
+      );
+    }
+
+    return client;
+  }
+
+  async updateClient(
+    id: string,
+    data: UpdateClientDto
+  ) {
+    const client =
+      await clientRepository.updateClient(
+        id,
+        data
+      );
+
+    if (!client) {
+      throw new ApiError(
+        404,
+        "Client not found"
+      );
+    }
+
+    return client;
+  }
+
+  async deleteClient(id: string) {
+    const client =
+      await clientRepository.deleteClient(id);
+
+    if (!client) {
+      throw new ApiError(
+        404,
+        "Client not found"
+      );
+    }
+
+    return {
+      message: "Client deleted successfully",
+    };
+  }
+}
+
+export default new ClientService();

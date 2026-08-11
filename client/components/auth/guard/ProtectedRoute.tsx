@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import AuthLoading from "../loading/AuthLoading";
@@ -17,11 +17,37 @@ export default function ProtectedRoute({
 
   const { authenticated, loading } = useAuth();
 
+  const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) {
+      return;
+    }
+
     if (!loading && !authenticated) {
       router.replace("/login");
     }
-  }, [authenticated, loading, router]);
+  }, [
+    mounted,
+    loading,
+    authenticated,
+    router,
+  ]);
+
+  /*
+   * Server render and the first browser render
+   * must be identical.
+   *
+   * We therefore do not render the protected
+   * dashboard until the browser has mounted.
+   */
+  if (!mounted) {
+    return null;
+  }
 
   if (loading) {
     return <AuthLoading />;
