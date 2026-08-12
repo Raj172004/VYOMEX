@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import {
   Building2,
-  Ellipsis,
+  Eye,
   Mail,
   Pencil,
   Phone,
@@ -14,13 +14,14 @@ import type { Client } from "@/services/clients/client.service";
 
 interface ClientTableProps {
   clients: Client[];
+  onView: (client: Client) => void;
   onEdit: (client: Client) => void;
   onDelete: (client: Client) => void;
 }
 
 function getInitials(
   firstName: string,
-  lastName: string
+  lastName: string,
 ) {
   return `${firstName?.charAt(0) ?? ""}${lastName?.charAt(0) ?? ""}`
     .toUpperCase();
@@ -31,18 +32,22 @@ function formatDate(date?: string) {
     return "—";
   }
 
-  return new Date(date).toLocaleDateString(
-    "en-IN",
-    {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }
-  );
+  const parsedDate = new Date(date);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return "—";
+  }
+
+  return parsedDate.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 export default function ClientTable({
   clients,
+  onView,
   onEdit,
   onDelete,
 }: ClientTableProps) {
@@ -73,7 +78,7 @@ export default function ClientTable({
       {/* Desktop */}
       <div className="hidden overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm lg:block">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px]">
+          <table className="w-full min-w-[1000px]">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/80">
                 <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -96,7 +101,9 @@ export default function ClientTable({
                   Added
                 </th>
 
-                <th className="w-24 px-6 py-4" />
+                <th className="w-32 px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Actions
+                </th>
               </tr>
             </thead>
 
@@ -111,7 +118,7 @@ export default function ClientTable({
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-sm font-black text-white shadow-lg shadow-blue-500/15">
                         {getInitials(
                           client.firstName,
-                          client.lastName
+                          client.lastName,
                         )}
                       </div>
 
@@ -188,18 +195,36 @@ export default function ClientTable({
                     <div className="flex items-center justify-end gap-1 opacity-60 transition group-hover:opacity-100">
                       <button
                         type="button"
-                        onClick={() => onEdit(client)}
+                        onClick={() =>
+                          onView(client)
+                        }
+                        className="rounded-xl p-2.5 text-slate-500 transition hover:bg-blue-50 hover:text-blue-600"
+                        aria-label={`View ${client.firstName} ${client.lastName}`}
+                        title="View client"
+                      >
+                        <Eye size={16} />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onEdit(client)
+                        }
                         className="rounded-xl p-2.5 text-slate-500 transition hover:bg-cyan-50 hover:text-cyan-600"
                         aria-label={`Edit ${client.firstName} ${client.lastName}`}
+                        title="Edit client"
                       >
                         <Pencil size={16} />
                       </button>
 
                       <button
                         type="button"
-                        onClick={() => onDelete(client)}
+                        onClick={() =>
+                          onDelete(client)
+                        }
                         className="rounded-xl p-2.5 text-slate-500 transition hover:bg-red-50 hover:text-red-600"
                         aria-label={`Delete ${client.firstName} ${client.lastName}`}
+                        title="Delete client"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -224,7 +249,7 @@ export default function ClientTable({
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-sm font-black text-white">
                   {getInitials(
                     client.firstName,
-                    client.lastName
+                    client.lastName,
                   )}
                 </div>
 
@@ -294,18 +319,36 @@ export default function ClientTable({
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => onEdit(client)}
+                  onClick={() =>
+                    onView(client)
+                  }
+                  className="rounded-xl border border-slate-200 p-2.5 text-slate-500 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+                  aria-label={`View ${client.firstName} ${client.lastName}`}
+                  title="View client"
+                >
+                  <Eye size={16} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    onEdit(client)
+                  }
                   className="rounded-xl border border-slate-200 p-2.5 text-slate-500 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-600"
                   aria-label={`Edit ${client.firstName} ${client.lastName}`}
+                  title="Edit client"
                 >
                   <Pencil size={16} />
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => onDelete(client)}
+                  onClick={() =>
+                    onDelete(client)
+                  }
                   className="rounded-xl border border-slate-200 p-2.5 text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
                   aria-label={`Delete ${client.firstName} ${client.lastName}`}
+                  title="Delete client"
                 >
                   <Trash2 size={16} />
                 </button>

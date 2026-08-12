@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   Activity,
@@ -16,6 +16,7 @@ import {
   ClientService,
 } from "@/services/clients/client.service";
 
+import ClientDetailsModal from "./ClientDetailsModal";
 import ClientFormModal from "./ClientFormModal";
 import ClientTable from "./ClientTable";
 
@@ -43,7 +44,13 @@ export default function ClientsPage() {
   const [modalOpen, setModalOpen] =
     useState(false);
 
+  const [detailsOpen, setDetailsOpen] =
+    useState(false);
+
   const [editingClient, setEditingClient] =
+    useState<Client | null>(null);
+
+  const [selectedClient, setSelectedClient] =
     useState<Client | null>(null);
 
   const [deletingId, setDeletingId] =
@@ -62,9 +69,14 @@ export default function ClientsPage() {
         await ClientService.getAll();
 
       setClients(response.data.data);
-    } catch {
+    } catch (requestError) {
+      console.error(
+        "Failed to load clients:",
+        requestError,
+      );
+
       setError(
-        "Unable to load clients. Please try again."
+        "Unable to load clients. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -90,7 +102,7 @@ export default function ClientsPage() {
           .some((value) =>
             String(value)
               .toLowerCase()
-              .includes(normalizedSearch)
+              .includes(normalizedSearch),
           );
 
       const matchesStatus =
@@ -105,11 +117,11 @@ export default function ClientsPage() {
   }, [clients, search, status]);
 
   const activeCount = clients.filter(
-    (client) => client.status === "active"
+    (client) => client.status === "active",
   ).length;
 
   const inactiveCount = clients.filter(
-    (client) => client.status === "inactive"
+    (client) => client.status === "inactive",
   ).length;
 
   function openCreateModal() {
@@ -122,17 +134,22 @@ export default function ClientsPage() {
     setModalOpen(true);
   }
 
+  function openDetailsModal(client: Client) {
+    setSelectedClient(client);
+    setDetailsOpen(true);
+  }
+
   function handleSaved(client: Client) {
     setClients((current) => {
       const exists = current.some(
-        (item) => item._id === client._id
+        (item) => item._id === client._id,
       );
 
       if (exists) {
         return current.map((item) =>
           item._id === client._id
             ? client
-            : item
+            : item,
         );
       }
 
@@ -142,7 +159,7 @@ export default function ClientsPage() {
 
   async function handleDelete(client: Client) {
     const confirmed = window.confirm(
-      `Delete ${client.firstName} ${client.lastName} from your clients?`
+      `Delete ${client.firstName} ${client.lastName} from your clients?`,
     );
 
     if (!confirmed) {
@@ -153,17 +170,29 @@ export default function ClientsPage() {
       setDeletingId(client._id);
 
       await ClientService.delete(
-        client._id
+        client._id,
       );
 
       setClients((current) =>
         current.filter(
-          (item) => item._id !== client._id
-        )
+          (item) => item._id !== client._id,
+        ),
       );
-    } catch {
+
+      if (
+        selectedClient?._id === client._id
+      ) {
+        setSelectedClient(null);
+        setDetailsOpen(false);
+      }
+    } catch (requestError) {
+      console.error(
+        "Failed to delete client:",
+        requestError,
+      );
+
       window.alert(
-        "Unable to delete this client. Please try again."
+        "Unable to delete this client. Please try again.",
       );
     } finally {
       setDeletingId(null);
@@ -360,6 +389,7 @@ export default function ClientsPage() {
           <div className="pt-5">
             <ClientTable
               clients={filteredClients}
+              onView={openDetailsModal}
               onEdit={openEditModal}
               onDelete={handleDelete}
             />
@@ -367,7 +397,7 @@ export default function ClientsPage() {
         )}
       </div>
 
-      {/* Modal */}
+      {/* Create / Edit */}
       <ClientFormModal
         open={modalOpen}
         client={editingClient}
@@ -377,6 +407,16 @@ export default function ClientsPage() {
           }
         }}
         onSuccess={handleSaved}
+      />
+
+      {/* Details */}
+      <ClientDetailsModal
+        open={detailsOpen}
+        client={selectedClient}
+        onClose={() => {
+          setDetailsOpen(false);
+          setSelectedClient(null);
+        }}
       />
     </section>
   );
