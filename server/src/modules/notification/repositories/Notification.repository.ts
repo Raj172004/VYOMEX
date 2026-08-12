@@ -17,7 +17,7 @@ class NotificationRepository {
 
   async findAll() {
     return Notification.find()
-      .populate("user")
+      .populate("user", "-password")
       .sort({
         createdAt: -1,
       });
@@ -25,7 +25,8 @@ class NotificationRepository {
 
   async findById(id: string) {
     return Notification.findById(id).populate(
-      "user"
+      "user",
+      "-password"
     );
   }
 
@@ -36,15 +37,17 @@ class NotificationRepository {
     return Notification.findOne({
       _id: id,
       user: userId,
-    }).populate("user");
+    }).populate("user", "-password");
   }
 
   async findByUser(userId: string) {
     return Notification.find({
       user: userId,
-    }).sort({
-      createdAt: -1,
-    });
+    })
+      .populate("user", "-password")
+      .sort({
+        createdAt: -1,
+      });
   }
 
   async update(
