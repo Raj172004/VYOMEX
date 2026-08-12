@@ -1,15 +1,24 @@
+import { createServer } from "http";
+
 import app from "./app";
-
 import { connectDatabase } from "./config/db";
-
 import { env } from "./config/env";
+import { initializeSocket } from "./socket/socket";
 
 async function bootstrap() {
   await connectDatabase();
 
-  app.listen(env.PORT, () => {
+  const httpServer = createServer(app);
+
+  initializeSocket(httpServer);
+
+  httpServer.listen(env.PORT, () => {
     console.log(
       `Server running on http://localhost:${env.PORT}`
+    );
+
+    console.log(
+      `Socket.IO running on ws://localhost:${env.PORT}`
     );
   });
 }

@@ -4,10 +4,22 @@ import { CreateNotificationDto } from "../dto/CreateNotification.dto";
 import { UpdateNotificationDto } from "../dto/UpdateNotification.dto";
 
 import { ApiError } from "../../../utils/ApiError";
+import { emitToUser } from "../../../socket/socket";
 
 class NotificationService {
   async create(data: CreateNotificationDto) {
-    return notificationRepository.create(data);
+    const notification =
+      await notificationRepository.create(data);
+
+    if (data.user) {
+      emitToUser(
+        data.user,
+        "notification:new",
+        notification
+      );
+    }
+
+    return notification;
   }
 
   async findAll(userId: string) {
