@@ -10,13 +10,19 @@ class NotificationService {
     return notificationRepository.create(data);
   }
 
-  async findAll() {
-    return notificationRepository.findAll();
+  async findAll(userId: string) {
+    return notificationRepository.findByUser(userId);
   }
 
-  async findById(id: string) {
+  async findById(
+    id: string,
+    userId: string
+  ) {
     const notification =
-      await notificationRepository.findById(id);
+      await notificationRepository.findByIdForUser(
+        id,
+        userId
+      );
 
     if (!notification) {
       throw new ApiError(
@@ -36,11 +42,13 @@ class NotificationService {
 
   async update(
     id: string,
+    userId: string,
     data: UpdateNotificationDto
   ) {
     const notification =
-      await notificationRepository.update(
+      await notificationRepository.updateForUser(
         id,
+        userId,
         data
       );
 
@@ -54,10 +62,14 @@ class NotificationService {
     return notification;
   }
 
-  async markAsRead(id: string) {
+  async markAsRead(
+    id: string,
+    userId: string
+  ) {
     const notification =
-      await notificationRepository.markAsRead(
-        id
+      await notificationRepository.markAsReadForUser(
+        id,
+        userId
       );
 
     if (!notification) {
@@ -70,25 +82,27 @@ class NotificationService {
     return notification;
   }
 
-  async markAllAsRead(
-    userId: string
-  ) {
+  async markAllAsRead(userId: string) {
     return notificationRepository.markAllAsRead(
       userId
     );
   }
 
-  async countUnread(
-    userId: string
-  ) {
+  async countUnread(userId: string) {
     return notificationRepository.countUnread(
       userId
     );
   }
 
-  async delete(id: string) {
+  async delete(
+    id: string,
+    userId: string
+  ) {
     const notification =
-      await notificationRepository.delete(id);
+      await notificationRepository.deleteForUser(
+        id,
+        userId
+      );
 
     if (!notification) {
       throw new ApiError(

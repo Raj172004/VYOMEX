@@ -29,6 +29,16 @@ class NotificationRepository {
     );
   }
 
+  async findByIdForUser(
+    id: string,
+    userId: string
+  ) {
+    return Notification.findOne({
+      _id: id,
+      user: userId,
+    }).populate("user");
+  }
+
   async findByUser(userId: string) {
     return Notification.find({
       user: userId,
@@ -51,6 +61,24 @@ class NotificationRepository {
     );
   }
 
+  async updateForUser(
+    id: string,
+    userId: string,
+    data: UpdateNotificationDto
+  ) {
+    return Notification.findOneAndUpdate(
+      {
+        _id: id,
+        user: userId,
+      },
+      data,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+  }
+
   async markAsRead(id: string) {
     return Notification.findByIdAndUpdate(
       id,
@@ -63,9 +91,25 @@ class NotificationRepository {
     );
   }
 
-  async markAllAsRead(
+  async markAsReadForUser(
+    id: string,
     userId: string
   ) {
+    return Notification.findOneAndUpdate(
+      {
+        _id: id,
+        user: userId,
+      },
+      {
+        isRead: true,
+      },
+      {
+        new: true,
+      }
+    );
+  }
+
+  async markAllAsRead(userId: string) {
     return Notification.updateMany(
       {
         user: userId,
@@ -83,9 +127,17 @@ class NotificationRepository {
     );
   }
 
-  async countUnread(
+  async deleteForUser(
+    id: string,
     userId: string
   ) {
+    return Notification.findOneAndDelete({
+      _id: id,
+      user: userId,
+    });
+  }
+
+  async countUnread(userId: string) {
     return Notification.countDocuments({
       user: userId,
       isRead: false,

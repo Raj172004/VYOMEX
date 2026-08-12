@@ -1,4 +1,8 @@
-import { Request, Response, NextFunction } from "express";
+import {
+  Request,
+  Response,
+  NextFunction,
+} from "express";
 
 import notificationService from "../services/Notification.service";
 
@@ -10,11 +14,15 @@ class NotificationController {
   ) {
     try {
       const notification =
-        await notificationService.create(req.body);
+        await notificationService.create({
+          ...req.body,
+          user: req.user!._id.toString(),
+        });
 
       return res.status(201).json({
         success: true,
-        message: "Notification created successfully",
+        message:
+          "Notification created successfully",
         data: notification,
       });
     } catch (error) {
@@ -29,7 +37,9 @@ class NotificationController {
   ) {
     try {
       const notifications =
-        await notificationService.findAll();
+        await notificationService.findAll(
+          req.user!._id.toString()
+        );
 
       return res.status(200).json({
         success: true,
@@ -48,7 +58,8 @@ class NotificationController {
     try {
       const notification =
         await notificationService.findById(
-          String(req.params.id)
+          String(req.params.id),
+          req.user!._id.toString()
         );
 
       return res.status(200).json({
@@ -66,9 +77,23 @@ class NotificationController {
     next: NextFunction
   ) {
     try {
+      const authenticatedUserId =
+        req.user!._id.toString();
+
+      if (
+        authenticatedUserId !==
+        String(req.params.userId)
+      ) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "You are not allowed to access another user's notifications",
+        });
+      }
+
       const notifications =
         await notificationService.findByUser(
-          String(req.params.id)
+          authenticatedUserId
         );
 
       return res.status(200).json({
@@ -89,12 +114,14 @@ class NotificationController {
       const notification =
         await notificationService.update(
           String(req.params.id),
+          req.user!._id.toString(),
           req.body
         );
 
       return res.status(200).json({
         success: true,
-        message: "Notification updated successfully",
+        message:
+          "Notification updated successfully",
         data: notification,
       });
     } catch (error) {
@@ -110,12 +137,14 @@ class NotificationController {
     try {
       const notification =
         await notificationService.markAsRead(
-          String(req.params.id)
+          String(req.params.id),
+          req.user!._id.toString()
         );
 
       return res.status(200).json({
         success: true,
-        message: "Notification marked as read",
+        message:
+          "Notification marked as read",
         data: notification,
       });
     } catch (error) {
@@ -129,8 +158,22 @@ class NotificationController {
     next: NextFunction
   ) {
     try {
+      const authenticatedUserId =
+        req.user!._id.toString();
+
+      if (
+        authenticatedUserId !==
+        String(req.params.userId)
+      ) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "You are not allowed to modify another user's notifications",
+        });
+      }
+
       await notificationService.markAllAsRead(
-        String(req.params.id)
+        authenticatedUserId
       );
 
       return res.status(200).json({
@@ -149,9 +192,23 @@ class NotificationController {
     next: NextFunction
   ) {
     try {
+      const authenticatedUserId =
+        req.user!._id.toString();
+
+      if (
+        authenticatedUserId !==
+        String(req.params.userId)
+      ) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "You are not allowed to access another user's notifications",
+        });
+      }
+
       const count =
         await notificationService.countUnread(
-          String(req.params.id)
+          authenticatedUserId
         );
 
       return res.status(200).json({
@@ -172,7 +229,8 @@ class NotificationController {
   ) {
     try {
       await notificationService.delete(
-       String(req.params.id)
+        String(req.params.id),
+        req.user!._id.toString()
       );
 
       return res.status(200).json({
