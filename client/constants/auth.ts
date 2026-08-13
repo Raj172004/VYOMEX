@@ -15,7 +15,7 @@ export const AUTH_API = {
   REGISTER: "/auth/register",
   LOGOUT: "/auth/logout",
   REFRESH: "/auth/refresh",
-  PROFILE: "/auth/profile",
+  PROFILE: "/auth/me",
   FORGOT_PASSWORD: "/auth/forgot-password",
   RESET_PASSWORD: "/auth/reset-password",
 } as const;

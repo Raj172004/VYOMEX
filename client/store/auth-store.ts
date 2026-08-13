@@ -9,6 +9,7 @@ import {
 import {
   AuthState,
   LoginData,
+  User,
 } from "@/types/auth";
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -41,6 +42,12 @@ export const useAuthStore = create<AuthState>((set) => ({
       loading: false,
     });
   },
+
+  setUser: (user: User | null) =>
+    set({
+      user,
+      authenticated: Boolean(user),
+    }),
 
   setLoading: (loading: boolean) =>
     set({
