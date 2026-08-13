@@ -2,18 +2,16 @@ export const API_ENDPOINTS = {
   auth: {
     login: "/auth/login",
     register: "/auth/register",
-    logout: "/auth/logout",
-    refresh: "/auth/refresh",
-    profile: "/auth/profile",
+    me: "/auth/me",
   },
 
   dashboard: {
     overview: "/dashboard/overview",
+    activity: "/dashboard/activity",
     projects: "/dashboard/projects",
+    revenue: "/dashboard/revenue",
     tasks: "/dashboard/tasks",
     invoices: "/dashboard/invoices",
-    revenue: "/dashboard/revenue",
-    activity: "/dashboard/activity",
     deadlines: "/dashboard/deadlines",
     topClients: "/dashboard/top-clients",
   },
@@ -38,23 +36,26 @@ export const API_ENDPOINTS = {
     byId: (id: string) => `/invoices/${id}`,
   },
 
-  notifications: {
-    base: "/notifications",
-    byId: (id: string) => `/notifications/${id}`,
-    byUser: (userId: string) =>
-      `/notifications/user/${userId}`,
-    markAsRead: (id: string) =>
-      `/notifications/${id}/read`,
-    markAllAsRead: (userId: string) =>
-      `/notifications/user/${userId}/read-all`,
-    unreadCount: (userId: string) =>
-      `/notifications/user/${userId}/unread-count`,
-  },
-
   upload: {
     single: "/upload/single",
-    avatar: "/upload/avatar",
-    multiple: "/upload/multiple",
-    delete: "/upload/delete",
+  },
+
+  notifications: {
+    base: "/notifications",
+
+    byId: (id: string) =>
+      `/notifications/${id}`,
+
+    byUser: (userId: string) =>
+      `/notifications/user/${userId}`,
+
+    markAsRead: (id: string) =>
+      `/notifications/${id}/read`,
+
+    markAllAsRead: () =>
+      `/notifications/read-all`,
+
+    unreadCount: (userId: string) =>
+      `/notifications/user/${userId}/unread-count`,
   },
 } as const;

@@ -54,16 +54,14 @@ export const NotificationService = {
     );
   },
 
-  markAllAsRead(userId: string) {
-    return api.patch<ApiResponse<Notification>>(
-      API_ENDPOINTS.notifications.markAllAsRead(userId)
+  markAllAsRead() {
+    return api.patch<ApiResponse<null>>(
+      API_ENDPOINTS.notifications.markAllAsRead()
     );
   },
 
   getUnreadCount(userId: string) {
-    return api.get<
-      ApiResponse<{ unread: number }>
-    >(
+    return api.get<ApiResponse<{ unread: number }>>(
       API_ENDPOINTS.notifications.unreadCount(userId)
     );
   },

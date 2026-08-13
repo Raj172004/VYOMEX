@@ -13,10 +13,8 @@ import {
 } from "lucide-react";
 
 import { NotificationService } from "@/services/notifications/notification.service";
-import {
-  connectSocket,
-  disconnectSocket,
-} from "@/lib/socket";
+import { connectSocket, disconnectSocket } from "@/lib/socket";
+import { useAuth } from "@/hooks/useAuth";
 
 type NotificationItem = {
   _id: string;
@@ -26,6 +24,7 @@ type NotificationItem = {
   isRead: boolean;
   user?: string;
   createdAt?: string;
+  updatedAt?: string;
 };
 
 const iconMap = {
@@ -36,12 +35,14 @@ const iconMap = {
 };
 
 export default function NotificationPanel() {
-  const [notifications, setNotifications] =
-    useState<NotificationItem[]>([]);
+  const { user } = useAuth();
+
+  const [notifications, setNotifications] = useState<
+    NotificationItem[]
+  >([]);
 
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] =
-    useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const unreadCount = notifications.filter(
     (notification) => !notification.isRead
@@ -52,8 +53,7 @@ export default function NotificationPanel() {
 
     async function load() {
       try {
-        const response =
-          await NotificationService.getAll();
+        const response = await NotificationService.getAll();
 
         if (!mounted) {
           return;
@@ -166,21 +166,11 @@ export default function NotificationPanel() {
       return;
     }
 
-    const userId = user?._id;
-
-    if (!userId) {
-      console.warn(
-        "[NotificationPanel] Authenticated user ID unavailable"
-      );
-      return;
-    }
 
     setActionLoading("all");
 
     try {
-      await NotificationService.markAllAsRead(
-        userId
-      );
+      await NotificationService.markAllAsRead();
 
       setNotifications((current) =>
         current.map((notification) => ({
@@ -198,9 +188,7 @@ export default function NotificationPanel() {
     }
   };
 
-  const deleteNotification = async (
-    id: string
-  ) => {
+  const deleteNotification = async (id: string) => {
     if (actionLoading) {
       return;
     }
@@ -227,174 +215,189 @@ export default function NotificationPanel() {
   };
 
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h3 className="text-lg font-black text-slate-950">
-              Notifications
-            </h3>
-
-            {unreadCount > 0 && (
-              <span className="rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-black text-cyan-700">
-                {unreadCount} unread
-              </span>
-            )}
-          </div>
-
-          <p className="mt-1 text-sm text-slate-500">
-            Recent workspace updates
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {unreadCount > 0 && (
-            <button
-              type="button"
-              onClick={markAllAsRead}
-              disabled={actionLoading !== null}
-              className="hidden items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700 disabled:cursor-not-allowed disabled:opacity-50 sm:flex"
-            >
-              <CheckCheck size={15} />
-
-              {actionLoading === "all"
-                ? "Updating..."
-                : "Mark all read"}
-            </button>
-          )}
-
+    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 sm:px-6">
+        <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-600">
-            <Bell size={18} />
+            <Bell className="h-5 w-5" />
+          </div>
+
+          <div>
+            <h2 className="text-sm font-bold text-slate-950">
+              Recent notifications
+            </h2>
+
+            <p className="text-xs text-slate-500">
+              {unreadCount > 0
+                ? `${unreadCount} unread notification${
+                    unreadCount === 1 ? "" : "s"
+                  }`
+                : "You're all caught up"}
+            </p>
           </div>
         </div>
+
+        {unreadCount > 0 && (
+          <button
+            type="button"
+            onClick={markAllAsRead}
+            disabled={
+              actionLoading !== null
+            }
+            className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-cyan-700 transition hover:bg-cyan-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <CheckCheck className="h-4 w-4" />
+
+            <span className="hidden sm:inline">
+              {actionLoading === "all"
+                ? "Marking..."
+                : "Mark all as read"}
+            </span>
+          </button>
+        )}
       </div>
 
-      {unreadCount > 0 && (
-        <button
-          type="button"
-          onClick={markAllAsRead}
-          disabled={actionLoading !== null}
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700 disabled:cursor-not-allowed disabled:opacity-50 sm:hidden"
-        >
-          <CheckCheck size={15} />
-
-          {actionLoading === "all"
-            ? "Updating..."
-            : "Mark all as read"}
-        </button>
-      )}
-
-      <div className="mt-5 space-y-3">
-        {loading ? (
-          [1, 2, 3].map((item) => (
-            <div
-              key={item}
-              className="h-20 animate-pulse rounded-2xl bg-slate-100"
-            />
-          ))
-        ) : notifications.length === 0 ? (
-          <div className="rounded-2xl bg-slate-50 px-4 py-10 text-center">
-            <Check
-              size={24}
-              className="mx-auto text-emerald-500"
-            />
-
-            <p className="mt-2 text-sm font-semibold text-slate-600">
-              You&apos;re all caught up.
-            </p>
-
-            <p className="mt-1 text-xs text-slate-400">
-              New workspace notifications will appear here.
-            </p>
-          </div>
-        ) : (
-          notifications.map((notification) => {
-            const Icon =
-              iconMap[notification.type];
-
-            const busy =
-              actionLoading === notification._id;
-
-            return (
+      {loading ? (
+        <div className="divide-y divide-slate-100">
+          {Array.from({ length: 4 }).map(
+            (_, index) => (
               <div
-                key={notification._id}
-                className={`group flex gap-3 rounded-2xl border p-4 transition ${
-                  notification.isRead
-                    ? "border-slate-100 bg-slate-50"
-                    : "border-cyan-100 bg-cyan-50/50"
-                }`}
+                key={index}
+                className="animate-pulse px-5 py-5 sm:px-6"
               >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-cyan-600 shadow-sm">
-                  <Icon size={17} />
-                </div>
+                <div className="flex gap-4">
+                  <div className="h-10 w-10 rounded-2xl bg-slate-100" />
 
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-sm font-bold text-slate-900">
-                      {notification.title}
-                    </p>
-
-                    {!notification.isRead && (
-                      <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-cyan-500" />
-                    )}
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-1/3 rounded bg-slate-100" />
+                    <div className="h-3 w-3/4 rounded bg-slate-100" />
+                    <div className="h-3 w-1/4 rounded bg-slate-100" />
                   </div>
+                </div>
+              </div>
+            )
+          )}
+        </div>
+      ) : notifications.length === 0 ? (
+        <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
+            <Bell className="h-6 w-6" />
+          </div>
 
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
-                    {notification.message}
-                  </p>
+          <h3 className="mt-4 text-sm font-bold text-slate-950">
+            No notifications
+          </h3>
 
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    {notification.createdAt && (
-                      <p className="text-[10px] font-semibold text-slate-400">
-                        {new Date(
-                          notification.createdAt
-                        ).toLocaleString("en-IN")}
-                      </p>
-                    )}
+          <p className="mt-1 max-w-sm text-sm text-slate-500">
+            New workspace activity and updates will
+            appear here.
+          </p>
+        </div>
+      ) : (
+        <div className="divide-y divide-slate-100">
+          {notifications.map(
+            (notification) => {
+              const Icon =
+                iconMap[notification.type];
 
-                    <div className="ml-auto flex items-center gap-1">
-                      {!notification.isRead && (
+              const busy =
+                actionLoading ===
+                notification._id;
+
+              return (
+                <div
+                  key={notification._id}
+                  className={`group px-5 py-5 transition sm:px-6 ${
+                    notification.isRead
+                      ? "bg-white"
+                      : "bg-cyan-50/40"
+                  }`}
+                >
+                  <div className="flex gap-4">
+                    <div
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${
+                        notification.isRead
+                          ? "bg-slate-100 text-slate-500"
+                          : "bg-cyan-100 text-cyan-700"
+                      }`}
+                    >
+                      <Icon className="h-5 w-5" />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <h3
+                            className={`text-sm ${
+                              notification.isRead
+                                ? "font-semibold text-slate-800"
+                                : "font-bold text-slate-950"
+                            }`}
+                          >
+                            {notification.title}
+                          </h3>
+
+                          <p className="mt-1 text-sm leading-6 text-slate-500">
+                            {notification.message}
+                          </p>
+                        </div>
+
+                        {!notification.isRead && (
+                          <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-cyan-500" />
+                        )}
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap items-center gap-3">
+                        {notification.createdAt && (
+                          <span className="text-xs text-slate-400">
+                            {new Date(
+                              notification.createdAt
+                            ).toLocaleString()}
+                          </span>
+                        )}
+
+                        {!notification.isRead && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void markAsRead(
+                                notification._id
+                              )
+                            }
+                            disabled={busy}
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-700 hover:text-cyan-800 disabled:opacity-50"
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                            {busy
+                              ? "Saving..."
+                              : "Mark as read"}
+                          </button>
+                        )}
+
                         <button
                           type="button"
                           onClick={() =>
-                            markAsRead(
+                            void deleteNotification(
                               notification._id
                             )
                           }
                           disabled={busy}
-                          className="rounded-lg p-1.5 text-slate-400 transition hover:bg-white hover:text-cyan-600 disabled:cursor-not-allowed disabled:opacity-50"
-                          title="Mark as read"
-                          aria-label="Mark notification as read"
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 transition hover:text-red-600 disabled:opacity-50"
                         >
-                          <Check size={14} />
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Delete
                         </button>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          deleteNotification(
-                            notification._id
-                          )
-                        }
-                        disabled={busy}
-                        className="rounded-lg p-1.5 text-slate-400 transition hover:bg-white hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50"
-                        title="Delete notification"
-                        aria-label="Delete notification"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-    </section>
+              );
+            }
+          )}
+        </div>
+      )}
+    </div>
   );
 }
-
 
 

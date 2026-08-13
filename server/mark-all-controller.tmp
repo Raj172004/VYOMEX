@@ -1,0 +1,22 @@
+  async markAllAsRead(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const authenticatedUserId =
+        req.user!._id.toString();
+
+      await notificationService.markAllAsRead(
+        authenticatedUserId
+      );
+
+      return res.status(200).json({
+        success: true,
+        message:
+          "All notifications marked as read",
+      });
+    } catch (error) {
+      next(error);
+    }
+  }

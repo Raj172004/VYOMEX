@@ -29,11 +29,14 @@ router.get(
   )
 );
 
-router.get(
-  "/:id",
+/**
+ * IMPORTANT:
+ * Static routes must come before "/:id".
+ */
+router.patch(
+  "/read-all",
   authenticate,
-  validateNotificationId,
-  notificationController.findById.bind(
+  notificationController.markAllAsRead.bind(
     notificationController
   )
 );
@@ -47,12 +50,20 @@ router.get(
   )
 );
 
-router.patch(
+router.get(
+  "/user/:userId/unread-count",
+  authenticate,
+  validateNotificationUserId,
+  notificationController.countUnread.bind(
+    notificationController
+  )
+);
+
+router.get(
   "/:id",
   authenticate,
   validateNotificationId,
-  validateUpdateNotification,
-  notificationController.update.bind(
+  notificationController.findById.bind(
     notificationController
   )
 );
@@ -67,19 +78,11 @@ router.patch(
 );
 
 router.patch(
-  "/user/:userId/read-all",
+  "/:id",
   authenticate,
-  validateNotificationUserId,
-  notificationController.markAllAsRead.bind(
-    notificationController
-  )
-);
-
-router.get(
-  "/user/:userId/unread-count",
-  authenticate,
-  validateNotificationUserId,
-  notificationController.countUnread.bind(
+  validateNotificationId,
+  validateUpdateNotification,
+  notificationController.update.bind(
     notificationController
   )
 );

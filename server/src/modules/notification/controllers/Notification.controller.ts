@@ -151,7 +151,6 @@ class NotificationController {
       next(error);
     }
   }
-
   async markAllAsRead(
     req: Request,
     res: Response,
@@ -160,17 +159,6 @@ class NotificationController {
     try {
       const authenticatedUserId =
         req.user!._id.toString();
-
-      if (
-        authenticatedUserId !==
-        String(req.params.userId)
-      ) {
-        return res.status(403).json({
-          success: false,
-          message:
-            "You are not allowed to modify another user's notifications",
-        });
-      }
 
       await notificationService.markAllAsRead(
         authenticatedUserId
@@ -245,4 +233,6 @@ class NotificationController {
 }
 
 export default new NotificationController();
+
+
 
