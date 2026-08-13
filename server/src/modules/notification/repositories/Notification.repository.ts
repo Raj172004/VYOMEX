@@ -76,7 +76,7 @@ class NotificationRepository {
       },
       data,
       {
-        new: true,
+        returnDocument: "after",
         runValidators: true,
       }
     );
@@ -107,7 +107,7 @@ class NotificationRepository {
         isRead: true,
       },
       {
-        new: true,
+        returnDocument: "after",
       }
     );
   }

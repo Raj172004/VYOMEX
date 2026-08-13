@@ -166,21 +166,18 @@ export default function NotificationPanel() {
       return;
     }
 
+    const userId = user?._id;
+
+    if (!userId) {
+      console.warn(
+        "[NotificationPanel] Authenticated user ID unavailable"
+      );
+      return;
+    }
+
     setActionLoading("all");
 
     try {
-      const userId =
-        notifications.find(
-          (notification) => notification.user
-        )?.user;
-
-      if (!userId) {
-        console.warn(
-          "[NotificationPanel] User ID unavailable"
-        );
-        return;
-      }
-
       await NotificationService.markAllAsRead(
         userId
       );
@@ -398,3 +395,6 @@ export default function NotificationPanel() {
     </section>
   );
 }
+
+
+
