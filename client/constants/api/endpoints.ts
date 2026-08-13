@@ -41,12 +41,14 @@ export const API_ENDPOINTS = {
   notifications: {
     base: "/notifications",
     byId: (id: string) => `/notifications/${id}`,
-    byUser: (userId: string) => `/notifications/user/${userId}`,
-    markAsRead: (id: string) => `/notifications/${id}/read`,
+    byUser: (userId: string) =>
+      `/notifications/user/${userId}`,
+    markAsRead: (id: string) =>
+      `/notifications/${id}/read`,
     markAllAsRead: (userId: string) =>
       `/notifications/user/${userId}/read-all`,
     unreadCount: (userId: string) =>
-      `/notifications/user/${userId}/unread`,
+      `/notifications/user/${userId}/unread-count`,
   },
 
   upload: {

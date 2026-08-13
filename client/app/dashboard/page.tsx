@@ -1,12 +1,12 @@
 import ProtectedRoute from "@/components/auth/guard/ProtectedRoute";
 import DashboardLayout from "@/components/dashboard/layout/DashboardLayout";
-import ClientsPage from "@/components/dashboard/clients/ClientsPage";
+import DashboardOverview from "@/components/dashboard/overview/DashboardOverview";
 
-export default function DashboardClientsPage() {
+export default function DashboardPage() {
   return (
     <ProtectedRoute>
       <DashboardLayout>
-        <ClientsPage />
+        <DashboardOverview />
       </DashboardLayout>
     </ProtectedRoute>
   );
