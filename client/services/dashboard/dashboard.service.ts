@@ -1,4 +1,4 @@
-import api from "@/lib/api/axios";
+﻿import api from "@/lib/api/axios";
 import { API_ENDPOINTS } from "@/constants/api/endpoints";
 import { ApiResponse } from "@/types/api/common";
 
@@ -24,6 +24,7 @@ export interface TaskAnalytics {
     review: number;
     done: number;
   };
+
   priority: {
     low: number;
     medium: number;
@@ -43,7 +44,6 @@ export interface InvoiceAnalytics {
   sent: number;
   paid: number;
   overdue: number;
-  total: number;
 }
 
 export interface DashboardActivity {
@@ -70,20 +70,34 @@ export interface DashboardActivity {
   }>;
 }
 
-export interface DashboardDeadline {
+export interface DashboardDeadlineTask {
   _id: string;
   title: string;
   dueDate: string;
+  priority: string;
   status: string;
-  type: "project" | "task" | "invoice";
+}
+
+export interface DashboardDeadlineProject {
+  _id: string;
+  title: string;
+  endDate: string;
+  status: string;
+}
+
+export interface DashboardDeadlines {
+  overdueTasks: DashboardDeadlineTask[];
+  upcomingTasks: DashboardDeadlineTask[];
+  upcomingProjects: DashboardDeadlineProject[];
 }
 
 export interface DashboardTopClient {
-  _id: string;
+  clientId: string;
   name: string;
   company?: string;
+  email?: string;
   totalRevenue: number;
-  projectCount: number;
+  invoiceCount: number;
 }
 
 export const DashboardService = {
@@ -124,7 +138,7 @@ export const DashboardService = {
   },
 
   getDeadlines() {
-    return api.get<ApiResponse<DashboardDeadline[]>>(
+    return api.get<ApiResponse<DashboardDeadlines>>(
       API_ENDPOINTS.dashboard.deadlines
     );
   },

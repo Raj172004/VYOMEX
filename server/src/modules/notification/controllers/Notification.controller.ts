@@ -1,10 +1,12 @@
-import {
+﻿import {
   Request,
   Response,
   NextFunction,
 } from "express";
 
 import notificationService from "../services/Notification.service";
+import { CreateNotificationDto } from "../dto/CreateNotification.dto";
+import { UpdateNotificationDto } from "../dto/UpdateNotification.dto";
 
 class NotificationController {
   async create(
@@ -13,11 +15,18 @@ class NotificationController {
     next: NextFunction
   ) {
     try {
-      const notification =
-        await notificationService.create({
-          ...req.body,
+      const createData =
+        new CreateNotificationDto({
+          title: req.body.title,
+          message: req.body.message,
+          type: req.body.type ?? "info",
           user: req.user!._id.toString(),
         });
+
+      const notification =
+        await notificationService.create(
+          createData
+        );
 
       return res.status(201).json({
         success: true,
@@ -111,11 +120,27 @@ class NotificationController {
     next: NextFunction
   ) {
     try {
+      const updateData =
+        new UpdateNotificationDto({
+          ...(req.body.title !== undefined && {
+            title: req.body.title,
+          }),
+          ...(req.body.message !== undefined && {
+            message: req.body.message,
+          }),
+          ...(req.body.type !== undefined && {
+            type: req.body.type,
+          }),
+          ...(req.body.isRead !== undefined && {
+            isRead: req.body.isRead,
+          }),
+        });
+
       const notification =
         await notificationService.update(
           String(req.params.id),
           req.user!._id.toString(),
-          req.body
+          updateData
         );
 
       return res.status(200).json({
@@ -151,6 +176,7 @@ class NotificationController {
       next(error);
     }
   }
+
   async markAllAsRead(
     req: Request,
     res: Response,
@@ -233,6 +259,3 @@ class NotificationController {
 }
 
 export default new NotificationController();
-
-
-

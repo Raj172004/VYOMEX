@@ -1,108 +1,176 @@
-import { Request, Response, NextFunction } from "express";
+﻿import {
+  Request,
+  Response,
+  NextFunction,
+} from "express";
 
 import clientService from "../services/Client.service";
+import { ApiError } from "../../../utils/ApiError";
 
-export const create = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  console.log("🔥 CLIENT CONTROLLER EXECUTED 🔥");
+class ClientController {
+  async create(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const userId =
+        req.user!._id.toString();
 
-  try {
-    const client = await clientService.createClient(
-      req.body,
-      req.user!._id.toString()
-    );
+      const client =
+        await clientService.createClient(
+          req.body,
+          userId
+        );
 
-    res.status(201).json({
-      success: true,
-      message: "Client created successfully",
-      data: client,
-    });
-  } catch (error) {
-    next(error);
+      return res.status(201).json({
+        success: true,
+        message:
+          "Client created successfully",
+        data: client,
+      });
+    } catch (error) {
+      next(error);
+    }
   }
-};
 
-export const getAll = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const hasQuery = Object.keys(req.query).length > 0;
+  async getClients(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const userId =
+        req.user!._id.toString();
 
-    const clients = hasQuery
-      ? await clientService.searchClients(req.query as any)
-      : await clientService.getClients();
+      const search =
+        typeof req.query.search === "string"
+          ? req.query.search
+          : "";
 
-    res.json({
-      success: true,
-      data: clients,
-    });
-  } catch (error) {
-    next(error);
+      const clients =
+        await clientService.getClients(
+          userId,
+          search
+        );
+
+      /*
+       * Client data is authenticated and user-specific.
+       * Do not allow browser/proxy caching to turn
+       * authenticated API responses into stale 304 data.
+       */
+      res.setHeader(
+        "Cache-Control",
+        "no-store, no-cache, must-revalidate, proxy-revalidate"
+      );
+
+      res.setHeader(
+        "Pragma",
+        "no-cache"
+      );
+
+      res.setHeader(
+        "Expires",
+        "0"
+      );
+
+      return res.status(200).json({
+        success: true,
+        data: clients,
+      });
+    } catch (error) {
+      next(error);
+    }
   }
-};
 
-export const getById = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const id = req.params.id as string;
+  async getById(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const client =
+        await clientService.getClientById(
+          String(req.params.id),
+          req.user!._id.toString()
+        );
 
-    const client = await clientService.getClientById(id);
+      if (!client) {
+        throw new ApiError(
+          404,
+          "Client not found"
+        );
+      }
 
-    res.json({
-      success: true,
-      data: client,
-    });
-  } catch (error) {
-    next(error);
+      return res.status(200).json({
+        success: true,
+        data: client,
+      });
+    } catch (error) {
+      next(error);
+    }
   }
-};
 
-export const update = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const id = req.params.id as string;
+  async update(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const client =
+        await clientService.updateClient(
+          String(req.params.id),
+          req.user!._id.toString(),
+          req.body
+        );
 
-    const client = await clientService.updateClient(
-      id,
-      req.body
-    );
+      if (!client) {
+        throw new ApiError(
+          404,
+          "Client not found"
+        );
+      }
 
-    res.json({
-      success: true,
-      message: "Client updated successfully",
-      data: client,
-    });
-  } catch (error) {
-    next(error);
+      return res.status(200).json({
+        success: true,
+        message:
+          "Client updated successfully",
+        data: client,
+      });
+    } catch (error) {
+      next(error);
+    }
   }
-};
 
-export const remove = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const id = req.params.id as string;
+  async delete(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const client =
+        await clientService.deleteClient(
+          String(req.params.id),
+          req.user!._id.toString()
+        );
 
-    await clientService.deleteClient(id);
+      if (!client) {
+        throw new ApiError(
+          404,
+          "Client not found"
+        );
+      }
 
-    res.json({
-      success: true,
-      message: "Client deleted successfully",
-    });
-  } catch (error) {
-    next(error);
+      return res.status(200).json({
+        success: true,
+        message:
+          "Client deleted successfully",
+        data: client,
+      });
+    } catch (error) {
+      next(error);
+    }
   }
-};
+}
+
+export default new ClientController();

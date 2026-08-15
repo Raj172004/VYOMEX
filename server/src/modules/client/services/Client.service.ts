@@ -1,115 +1,212 @@
-import { ApiError } from "../../../utils/ApiError";
+﻿import { Types } from "mongoose";
 
-import { CreateClientDto } from "../dto/CreateClient.dto";
-import { UpdateClientDto } from "../dto/UpdateClient.dto";
-import { ClientQueryDto } from "../dto/ClientQuery.dto";
+import Client from "../models/Client.model";
 
-import clientRepository from "../repositories/Client.repository";
-import notificationService from "../../notification/services/Notification.service";
+interface ClientAddress {
+  street?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postalCode?: string;
+}
+
+interface ClientInput {
+  firstName: string;
+  lastName: string;
+  company: string;
+  email: string;
+  phone?: string;
+  website?: string;
+  industry?: string;
+  address?: ClientAddress;
+  city?: string;
+  state?: string;
+  country?: string;
+  postalCode?: string;
+  status?: "active" | "inactive" | "lead";
+  notes?: string;
+}
 
 class ClientService {
   async createClient(
-    data: CreateClientDto,
+    data: ClientInput,
     userId: string
   ) {
-    const existingClient =
-      await clientRepository.findByEmail(data.email);
+    const {
+      city,
+      state,
+      country,
+      postalCode,
+      address,
+      ...clientData
+    } = data;
 
-    if (existingClient) {
-      throw new ApiError(
-        400,
-        "Client email already exists"
-      );
-    }
+    const clientAddress: ClientAddress = {
+      ...(address ?? {}),
+      ...(city ? { city } : {}),
+      ...(state ? { state } : {}),
+      ...(country ? { country } : {}),
+      ...(postalCode ? { postalCode } : {}),
+    };
 
-    const client =
-      await clientRepository.create({
-        ...data,
-        createdBy: userId as any,
-      });
-
-    console.log("\n========================================");
-    console.log("✅ CLIENT CREATED");
-    console.log("Client ID:", client._id);
-    console.log("Company:", client.company);
-    console.log("User ID:", userId);
-    console.log("========================================");
-
-    const notification =
-      await notificationService.create({
-        title: "New Client",
-        message: `Client "${client.company}" has been created successfully.`,
-        type: "success",
-        isRead: false,
-        user: userId,
-      });
-
-    console.log("\n========================================");
-    console.log("✅ NOTIFICATION CREATED");
-    console.log(notification);
-    console.log("========================================\n");
-
-    return client;
+    return Client.create({
+      ...clientData,
+      owner: new Types.ObjectId(userId),
+      address: clientAddress,
+    });
   }
 
-  async getClients() {
-    return clientRepository.getAllClients();
-  }
-
-  async searchClients(
-    query: ClientQueryDto
+  async getClients(
+    userId: string,
+    search = ""
   ) {
-    return clientRepository.searchClients(query);
-  }
+    const owner =
+      new Types.ObjectId(userId);
 
-  async getClientById(id: string) {
-    const client =
-      await clientRepository.getClientById(id);
+    const normalizedSearch =
+      search.trim();
 
-    if (!client) {
-      throw new ApiError(
-        404,
-        "Client not found"
-      );
+    const filter: Record<string, unknown> = {
+      owner,
+    };
+
+    if (normalizedSearch) {
+      filter.$or = [
+        {
+          firstName: {
+            $regex: normalizedSearch,
+            $options: "i",
+          },
+        },
+        {
+          lastName: {
+            $regex: normalizedSearch,
+            $options: "i",
+          },
+        },
+        {
+          company: {
+            $regex: normalizedSearch,
+            $options: "i",
+          },
+        },
+        {
+          email: {
+            $regex: normalizedSearch,
+            $options: "i",
+          },
+        },
+        {
+          phone: {
+            $regex: normalizedSearch,
+            $options: "i",
+          },
+        },
+        {
+          industry: {
+            $regex: normalizedSearch,
+            $options: "i",
+          },
+        },
+        {
+          "address.city": {
+            $regex: normalizedSearch,
+            $options: "i",
+          },
+        },
+        {
+          "address.state": {
+            $regex: normalizedSearch,
+            $options: "i",
+          },
+        },
+        {
+          "address.country": {
+            $regex: normalizedSearch,
+            $options: "i",
+          },
+        },
+      ];
     }
 
-    return client;
+    return Client.find(filter)
+      .sort({ createdAt: -1 })
+      .exec();
+  }
+
+  async getClientById(
+    id: string,
+    userId: string
+  ) {
+    return Client.findOne({
+      _id: id,
+      owner: new Types.ObjectId(userId),
+    }).exec();
   }
 
   async updateClient(
     id: string,
-    data: UpdateClientDto
+    userId: string,
+    data: Partial<ClientInput>
   ) {
-    const client =
-      await clientRepository.updateClient(
-        id,
-        data
-      );
+    const {
+      city,
+      state,
+      country,
+      postalCode,
+      address,
+      ...clientData
+    } = data;
 
-    if (!client) {
-      throw new ApiError(
-        404,
-        "Client not found"
-      );
+    const updateData: Record<string, unknown> = {
+      ...clientData,
+    };
+
+    if (
+      address !== undefined ||
+      city !== undefined ||
+      state !== undefined ||
+      country !== undefined ||
+      postalCode !== undefined
+    ) {
+      updateData.address = {
+        ...(address ?? {}),
+        ...(city !== undefined
+          ? { city }
+          : {}),
+        ...(state !== undefined
+          ? { state }
+          : {}),
+        ...(country !== undefined
+          ? { country }
+          : {}),
+        ...(postalCode !== undefined
+          ? { postalCode }
+          : {}),
+      };
     }
 
-    return client;
+    return Client.findOneAndUpdate(
+      {
+        _id: id,
+        owner: new Types.ObjectId(userId),
+      },
+      updateData,
+      {
+        new: true,
+        runValidators: true,
+      }
+    ).exec();
   }
 
-  async deleteClient(id: string) {
-    const client =
-      await clientRepository.deleteClient(id);
-
-    if (!client) {
-      throw new ApiError(
-        404,
-        "Client not found"
-      );
-    }
-
-    return {
-      message: "Client deleted successfully",
-    };
+  async deleteClient(
+    id: string,
+    userId: string
+  ) {
+    return Client.findOneAndDelete({
+      _id: id,
+      owner: new Types.ObjectId(userId),
+    }).exec();
   }
 }
 

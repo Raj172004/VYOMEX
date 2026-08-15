@@ -1,107 +1,81 @@
-import { BaseRepository } from "../../../common/database/BaseRepository";
-import { QueryBuilder } from "../../../common/query/QueryBuilder";
-import { SearchBuilder } from "../../../common/query/SearchBuilder";
-import { FilterBuilder } from "../../../common/query/FilterBuilder";
+﻿import Client from "../models/Client.model";
+import {
+  CreateClientDto,
+  UpdateClientDto,
+} from "../dto/Client.dto";
 
-import ClientModel, {
-  IClient,
-} from "../models/Client.model";
-
-import { ClientQueryDto } from "../dto/ClientQuery.dto";
-
-class ClientRepository extends BaseRepository<IClient> {
-  constructor() {
-    super(ClientModel);
-  }
-
-  async findByEmail(email: string) {
-    return this.findOne({
-      email,
+class ClientRepository {
+  async create(
+    ownerId: string,
+    data: CreateClientDto
+  ) {
+    return Client.create({
+      ...data,
+      owner: ownerId,
     });
   }
 
-  async findByCompany(company: string) {
-    return this.findOne({
-      company,
+  async findAll(ownerId: string) {
+    return Client.find({
+      owner: ownerId,
+    }).sort({
+      createdAt: -1,
     });
   }
 
-  async getAllClients() {
-    return this.findAll({
-      populate: "createdBy",
-      sort: {
-        createdAt: -1,
-      },
-    });
-  }
-
-  async getClientById(id: string) {
-    return this.findById(id, {
-      populate: "createdBy",
-    });
-  }
-
-  async updateClient(
+  async findById(
     id: string,
-    data: Partial<IClient>
+    ownerId: string
   ) {
-    return this.update(id, data);
-  }
-
-  async deleteClient(id: string) {
-    return this.delete(id);
-  }
-
-  async searchClients(
-    query: ClientQueryDto
-  ) {
-    const {
-      page = 1,
-      limit = 10,
-      search,
-      company,
-      email,
-      status,
-      sortBy = "createdAt",
-      order = "desc",
-    } = query;
-
-    const pagination = QueryBuilder.build({
-      page,
-      limit,
-      sortBy,
-      order,
+    return Client.findOne({
+      _id: id,
+      owner: ownerId,
     });
+  }
 
-    const searchFilter = SearchBuilder.build(
-      search,
-      [
-        "firstName",
-        "lastName",
-        "company",
-        "email",
-      ]
+  async update(
+    id: string,
+    ownerId: string,
+    data: UpdateClientDto
+  ) {
+    return Client.findOneAndUpdate(
+      {
+        _id: id,
+        owner: ownerId,
+      },
+      data,
+      {
+        returnDocument: "after",
+        runValidators: true,
+      }
     );
+  }
 
-    const filters = FilterBuilder.build({
-      company,
-      email,
-      status,
+  async delete(
+    id: string,
+    ownerId: string
+  ) {
+    return Client.findOneAndDelete({
+      _id: id,
+      owner: ownerId,
     });
+  }
 
-    const filter: Record<string, unknown> = {
-      ...searchFilter,
-      ...filters,
+  async count(
+    ownerId: string,
+    status?: string
+  ) {
+    const query: Record<string, unknown> = {
+      owner: ownerId,
     };
 
-    return this.paginate(
-      filter,
-      pagination.page,
-      pagination.limit,
-      pagination.sort,
-      "createdBy"
-    );
+    if (status) {
+      query.status = status;
+    }
+
+    return Client.countDocuments(query);
   }
 }
 
 export default new ClientRepository();
+

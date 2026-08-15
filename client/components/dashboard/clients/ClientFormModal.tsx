@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import {
   Building2,
@@ -143,17 +143,17 @@ export default function ClientFormModal({
     }
 
     reset({
-      firstName: client?.firstName ?? "",
-      lastName: client?.lastName ?? "",
+      firstName: client?.name ?? "",
+      lastName: client?.name?.split(" ").slice(1).join(" ") ?? "",
       company: client?.company ?? "",
       email: client?.email ?? "",
       phone: client?.phone ?? "",
       website: client?.website ?? "",
       industry: client?.industry ?? "",
-      address: client?.address ?? "",
-      city: client?.city ?? "",
-      country: client?.country ?? "",
-      status: client?.status ?? "active",
+      address: typeof client?.address === "string" ? client.address : client?.address?.street ?? "",
+      city: (client?.address as any)?.city ?? "",
+      country: (client?.address as any)?.country ?? "",
+      status: client?.status === "inactive" ? "inactive" : "active",
       notes: client?.notes ?? "",
     });
   }, [open, client, reset]);
@@ -182,17 +182,20 @@ export default function ClientFormModal({
 
   async function onSubmit(values: ClientFormValues) {
     const payload: CreateClientPayload = {
-      firstName: values.firstName.trim(),
-      lastName: values.lastName.trim(),
-      company: values.company.trim(),
+      name: [values.firstName.trim(), values.lastName.trim()]
+        .filter(Boolean)
+        .join(" "),
+      company: values.company.trim() || undefined,
       email: values.email.trim().toLowerCase(),
       phone: values.phone.trim() || undefined,
       website: values.website.trim() || undefined,
       industry: values.industry.trim() || undefined,
-      address: values.address.trim() || undefined,
-      city: values.city.trim() || undefined,
-      country: values.country.trim() || undefined,
-      status: values.status as ClientStatus,
+      status: values.status,
+      address: {
+        street: values.address.trim() || undefined,
+        city: values.city.trim() || undefined,
+        country: values.country.trim() || undefined,
+      },
       notes: values.notes.trim() || undefined,
     };
 
@@ -329,7 +332,7 @@ export default function ClientFormModal({
               icon={User}
               placeholder="Doe"
               required
-              error={errors.lastName?.message}
+              error={errors.email?.message}
               registration={register("lastName")}
             />
 
@@ -584,5 +587,14 @@ function FieldError({
     </p>
   );
 }
+
+
+
+
+
+
+
+
+
 
 

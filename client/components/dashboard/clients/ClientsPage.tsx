@@ -1,473 +1,895 @@
-﻿"use client";
+"use client";
 
 import {
-  Activity,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import {
   Building2,
   CheckCircle2,
+  Clock3,
+  Mail,
+  MapPin,
+  Pencil,
+  Phone,
   Plus,
   Search,
+  Trash2,
+  UserRound,
   Users,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
 
 import {
   Client,
   ClientService,
+  ClientStatus,
+  CreateClientInput,
 } from "@/services/clients/client.service";
 
-import ClientDetailsModal from "./ClientDetailsModal";
-import ClientFormModal from "./ClientFormModal";
-import ClientTable from "./ClientTable";
+const emptyForm: CreateClientInput = {
+  name: "",
+  email: "",
+  company: "",
+  phone: "",
+  website: "",
+  industry: "",
+  status: "lead",
+  notes: "",
+  address: {
+    street: "",
+    city: "",
+    state: "",
+    country: "",
+    postalCode: "",
+  },
+};
 
-type FilterStatus =
-  | "all"
-  | "active"
-  | "inactive";
+const statusConfig: Record<
+  ClientStatus,
+  {
+    label: string;
+    className: string;
+  }
+> = {
+  active: {
+    label: "Active",
+    className:
+      "bg-emerald-50 text-emerald-600 border-emerald-200",
+  },
+  inactive: {
+    label: "Inactive",
+    className:
+      "bg-zinc-500/10 text-slate-500 border-zinc-500/20",
+  },
+  lead: {
+    label: "Lead",
+    className:
+      "bg-blue-500/10 text-cyan-600 border-blue-500/20",
+  },
+};
+
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
 
 export default function ClientsPage() {
-  const [clients, setClients] =
-    useState<Client[]>([]);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [error, setError] =
-    useState("");
-
-  const [search, setSearch] =
-    useState("");
-
-  const [status, setStatus] =
-    useState<FilterStatus>("all");
-
-  const [modalOpen, setModalOpen] =
-    useState(false);
-
-  const [detailsOpen, setDetailsOpen] =
-    useState(false);
-
-  const [editingClient, setEditingClient] =
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] =
     useState<Client | null>(null);
-
-  const [selectedClient, setSelectedClient] =
+  const [editing, setEditing] =
     useState<Client | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] =
+    useState<CreateClientInput>(emptyForm);
 
-  const [deletingId, setDeletingId] =
-    useState<string | null>(null);
+  const loadClients = useCallback(
+    async (query?: string) => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const response =
+          await ClientService.getAll(query);
+
+        setClients(response.data.data ?? []);
+      } catch (err) {
+        console.error(
+          "[ClientsPage] Failed to load clients:",
+          err
+        );
+        setError(
+          "Unable to load clients. Please try again."
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
-    void loadClients();
-  }, []);
+    const timer = setTimeout(() => {
+      void loadClients(search);
+    }, 300);
 
-  async function loadClients() {
-    try {
-      setLoading(true);
-      setError("");
+    return () => clearTimeout(timer);
+  }, [search, loadClients]);
 
-      const response =
-        await ClientService.getAll();
+  const stats = useMemo(() => {
+    return {
+      total: clients.length,
+      active: clients.filter(
+        (client) => client.status === "active"
+      ).length,
+      leads: clients.filter(
+        (client) => client.status === "lead"
+      ).length,
+      inactive: clients.filter(
+        (client) => client.status === "inactive"
+      ).length,
+    };
+  }, [clients]);
 
-      setClients(response.data.data);
-    } catch (requestError) {
-      console.error(
-        "Failed to load clients:",
-        requestError,
-      );
+  const openCreate = () => {
+    setEditing(null);
+    setForm(emptyForm);
+    setShowForm(true);
+  };
 
-      setError(
-        "Unable to load clients. Please try again.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const filteredClients = useMemo(() => {
-    const normalizedSearch =
-      search.trim().toLowerCase();
-
-    return clients.filter((client) => {
-      const matchesSearch =
-        !normalizedSearch ||
-        [
-          client.firstName,
-          client.lastName,
-          client.company,
-          client.email,
-          client.phone,
-          client.industry,
-        ]
-          .filter(Boolean)
-          .some((value) =>
-            String(value)
-              .toLowerCase()
-              .includes(normalizedSearch),
-          );
-
-      const matchesStatus =
-        status === "all" ||
-        client.status === status;
-
-      return (
-        matchesSearch &&
-        matchesStatus
-      );
+  const openEdit = (client: Client) => {
+    setSelected(null);
+    setEditing(client);
+    setForm({
+      name: client.name,
+      email: client.email,
+      company: client.company ?? "",
+      phone: client.phone ?? "",
+      website: client.website ?? "",
+      industry: client.industry ?? "",
+      status: client.status,
+      notes: client.notes ?? "",
+      address: {
+        street: client.address?.street ?? "",
+        city: client.address?.city ?? "",
+        state: client.address?.state ?? "",
+        country: client.address?.country ?? "",
+        postalCode:
+          client.address?.postalCode ?? "",
+      },
     });
-  }, [clients, search, status]);
+    setShowForm(true);
+  };
 
-  const activeCount = clients.filter(
-    (client) => client.status === "active",
-  ).length;
+  const closeForm = () => {
+    if (saving) return;
 
-  const inactiveCount = clients.filter(
-    (client) => client.status === "inactive",
-  ).length;
+    setShowForm(false);
+    setEditing(null);
+    setForm(emptyForm);
+  };
 
-  function openCreateModal() {
-    setEditingClient(null);
-    setModalOpen(true);
-  }
+  const updateField = (
+    field: keyof CreateClientInput,
+    value: string
+  ) => {
+    setForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
 
-  function openEditModal(client: Client) {
-    setEditingClient(client);
-    setModalOpen(true);
-  }
+  const updateAddress = (
+    field: keyof NonNullable<
+      CreateClientInput["address"]
+    >,
+    value: string
+  ) => {
+    setForm((current) => ({
+      ...current,
+      address: {
+        ...current.address,
+        [field]: value,
+      },
+    }));
+  };
 
-  function openDetailsModal(client: Client) {
-    setSelectedClient(client);
-    setDetailsOpen(true);
-  }
+  const saveClient = async (
+    event: React.FormEvent
+  ) => {
+    event.preventDefault();
 
-  function handleSaved(client: Client) {
-    setClients((current) => {
-      const exists = current.some(
-        (item) => item._id === client._id,
-      );
-
-      if (exists) {
-        return current.map((item) =>
-          item._id === client._id
-            ? client
-            : item,
-        );
-      }
-
-      return [client, ...current];
-    });
-  }
-
-  async function handleDelete(client: Client) {
-    const confirmed = window.confirm(
-      `Delete ${client.firstName} ${client.lastName} from your clients?`,
-    );
-
-    if (!confirmed) {
+    if (!form.name.trim() || !form.email.trim()) {
+      setError("Name and email are required.");
       return;
     }
 
     try {
-      setDeletingId(client._id);
+      setSaving(true);
+      setError("");
 
-      await ClientService.delete(
-        client._id,
+      if (editing) {
+        const response =
+          await ClientService.update(
+            editing._id,
+            form
+          );
+
+        setClients((current) =>
+          current.map((client) =>
+            client._id === editing._id
+              ? response.data.data
+              : client
+          )
+        );
+      } else {
+        const response =
+          await ClientService.create(form);
+
+        setClients((current) => [
+          response.data.data,
+          ...current,
+        ]);
+      }
+
+      closeForm();
+    } catch (err) {
+      console.error(
+        "[ClientsPage] Save failed:",
+        err
       );
+      setError(
+        "Unable to save client. Please check the details and try again."
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteClient = async (client: Client) => {
+    const confirmed = window.confirm(
+      `Delete ${client.name}? This action cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await ClientService.delete(client._id);
 
       setClients((current) =>
         current.filter(
-          (item) => item._id !== client._id,
-        ),
+          (item) => item._id !== client._id
+        )
       );
 
-      if (
-        selectedClient?._id === client._id
-      ) {
-        setSelectedClient(null);
-        setDetailsOpen(false);
-      }
-    } catch (requestError) {
+      setSelected(null);
+    } catch (err) {
       console.error(
-        "Failed to delete client:",
-        requestError,
+        "[ClientsPage] Delete failed:",
+        err
       );
-
-      window.alert(
-        "Unable to delete this client. Please try again.",
+      setError(
+        "Unable to delete this client."
       );
-    } finally {
-      setDeletingId(null);
     }
-  }
+  };
 
   return (
-    <section className="space-y-6">
-      {/* Page header */}
-      <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+    <div className="space-y-6">
+      <div className="flex flex-col gap-5">
         <div>
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-cyan-50 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-cyan-700">
-            <Users size={14} />
-            Workspace
-          </div>
+          <p className="text-sm font-medium text-cyan-600">
+            CRM
+          </p>
 
-          <h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+          <h1 className="mt-2 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">
             Clients
           </h1>
 
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 sm:text-base">
-            Manage your client relationships,
-            contact information and account status
-            from one workspace.
+          <p className="mt-2 max-w-2xl text-base leading-7 text-slate-500 sm:text-lg">
+            Manage your client relationships from one place.
           </p>
         </div>
 
         <button
           type="button"
-          onClick={openCreateModal}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-bold text-white shadow-xl shadow-slate-950/15 transition hover:-translate-y-0.5 hover:bg-slate-800"
+          onClick={openCreate}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white shadow-xl shadow-slate-950/15 transition hover:-translate-y-0.5 hover:bg-slate-800"
         >
-          <Plus size={18} />
+          <Plus size={17} />
           Add Client
         </button>
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <StatCard
           icon={Users}
           label="Total Clients"
-          value={clients.length}
-          description="All workspace clients"
+          value={stats.total}
         />
 
         <StatCard
           icon={CheckCircle2}
-          label="Active Clients"
-          value={activeCount}
-          description="Currently active"
-          iconClass="text-emerald-600"
-          iconBackground="bg-emerald-50"
+          label="Active"
+          value={stats.active}
         />
 
         <StatCard
-          icon={Activity}
-          label="Inactive Clients"
-          value={inactiveCount}
-          description="Currently inactive"
-          iconClass="text-slate-500"
-          iconBackground="bg-slate-100"
+          icon={Clock3}
+          label="Leads"
+          value={stats.leads}
+        />
+
+        <StatCard
+          icon={UserRound}
+          label="Inactive"
+          value={stats.inactive}
         />
       </div>
 
-      {/* Main content */}
-      <div className="rounded-3xl border border-slate-200 bg-white/80 p-4 shadow-sm backdrop-blur-xl sm:p-5">
-        {/* Toolbar */}
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div className="relative min-w-0 flex-1 xl:max-w-xl">
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+          {error}
+        </div>
+      )}
+
+      <div className="rounded-3xl border border-slate-200 bg-white/90 shadow-sm backdrop-blur-xl">
+        <div className="flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative w-full sm:max-w-sm">
             <Search
-              size={18}
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+              size={17}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
             />
 
             <input
-              type="search"
               value={search}
               onChange={(event) =>
                 setSearch(event.target.value)
               }
-              placeholder="Search clients, companies, emails..."
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50/70 pl-11 pr-10 text-sm font-medium text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-cyan-500 focus:bg-white focus:ring-4 focus:ring-cyan-500/10"
+              placeholder="Search clients..."
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm font-medium text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-cyan-300 focus:ring-4 focus:ring-cyan-100"
             />
-
-            {search && (
-              <button
-                type="button"
-                onClick={() => setSearch("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
-                aria-label="Clear search"
-              >
-                <X size={15} />
-              </button>
-            )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {(
-              [
-                ["all", "All"],
-                ["active", "Active"],
-                ["inactive", "Inactive"],
-              ] as const
-            ).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() =>
-                  setStatus(value)
-                }
-                className={`rounded-xl px-4 py-2.5 text-sm font-bold transition ${
-                  status === value
-                    ? "bg-slate-950 text-white shadow-md"
-                    : "bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-800"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Result summary */}
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
-          <p className="text-sm text-slate-500">
-            Showing{" "}
-            <span className="font-bold text-slate-900">
-              {filteredClients.length}
-            </span>{" "}
-            of{" "}
-            <span className="font-bold text-slate-900">
-              {clients.length}
-            </span>{" "}
-            clients
+          <p className="text-xs text-slate-400">
+            {clients.length} client
+            {clients.length === 1 ? "" : "s"}
           </p>
-
-          {(search ||
-            status !== "all") && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearch("");
-                setStatus("all");
-              }}
-              className="text-xs font-bold text-cyan-600 hover:text-cyan-700"
-            >
-              Clear filters
-            </button>
-          )}
         </div>
 
-        {/* Loading */}
-        {loading && (
-          <div className="space-y-4 pt-5">
-            {Array.from({
-              length: 5,
-            }).map((_, index) => (
+        {loading ? (
+          <div className="space-y-3 p-4">
+            {[1, 2, 3, 4].map((item) => (
               <div
-                key={index}
-                className="h-20 animate-pulse rounded-2xl bg-slate-100"
+                key={item}
+                className="h-16 animate-pulse rounded-xl bg-slate-100"
               />
             ))}
           </div>
-        )}
-
-        {/* Error */}
-        {!loading && error && (
-          <div className="py-16 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-500">
-              <Building2 size={24} />
+        ) : clients.length === 0 ? (
+          <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
+            <div className="mb-4 rounded-3xl bg-cyan-50 p-5 text-cyan-600 shadow-sm">
+              <Users className="text-slate-400" />
             </div>
 
-            <h3 className="mt-4 font-black text-slate-900">
-              Something went wrong
+            <h3 className="text-lg font-black tracking-tight text-slate-950">
+              {search
+                ? "No clients found"
+                : "No clients yet"}
             </h3>
 
-            <p className="mt-2 text-sm text-slate-500">
-              {error}
+            <p className="mt-1 max-w-sm text-sm text-slate-400">
+              {search
+                ? "Try a different search term."
+                : "Add your first client to start building your CRM."}
             </p>
 
-            <button
-              type="button"
-              onClick={() => void loadClients()}
-              className="mt-5 rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-bold text-white"
-            >
-              Try Again
-            </button>
+            {!search && (
+              <button
+                type="button"
+                onClick={openCreate}
+                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-slate-950/10 transition hover:-translate-y-0.5 hover:bg-slate-800"
+              >
+                <Plus size={16} />
+                Add Client
+              </button>
+            )}
           </div>
-        )}
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {clients.map((client) => {
+              const status =
+                statusConfig[client.status];
 
-        {/* Data */}
-        {!loading && !error && (
-          <div className="pt-5">
-            <ClientTable
-              clients={filteredClients}
-              onView={openDetailsModal}
-              onEdit={openEditModal}
-              onDelete={handleDelete}
-            />
+              return (
+                <div
+                  key={client._id}
+                  className="group flex flex-col gap-4 p-4 transition hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSelected(client)
+                    }
+                    className="flex min-w-0 items-center gap-3 text-left"
+                  >
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-cyan-50 text-sm font-semibold text-slate-950">
+                      {getInitials(client.name)}
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-slate-950">
+                        {client.name}
+                      </p>
+
+                      <p className="mt-0.5 truncate text-xs text-slate-400">
+                        {client.company ||
+                          client.email}
+                      </p>
+                    </div>
+                  </button>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span
+                      className={`rounded-full border px-2.5 py-1 text-xs font-medium ${status.className}`}
+                    >
+                      {status.label}
+                    </span>
+
+                    <div className="hidden items-center gap-2 text-xs text-slate-400 md:flex">
+                      <Mail size={14} />
+                      {client.email}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openEdit(client)
+                      }
+                      className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-950"
+                      aria-label="Edit client"
+                    >
+                      <Pencil size={16} />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void deleteClient(client)
+                      }
+                      className="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                      aria-label="Delete client"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* Create / Edit */}
-      <ClientFormModal
-        open={modalOpen}
-        client={editingClient}
-        onClose={() => {
-          if (!deletingId) {
-            setModalOpen(false);
-          }
-        }}
-        onSuccess={handleSaved}
-      />
+      {selected && (
+        <Modal onClose={() => setSelected(null)}>
+          <div className="space-y-5">
+            <ModalHeader
+              title={selected.name}
+              onClose={() => setSelected(null)}
+            />
 
-      {/* Details */}
-      <ClientDetailsModal
-        open={detailsOpen}
-        client={selectedClient}
-        onClose={() => {
-          setDetailsOpen(false);
-          setSelectedClient(null);
-        }}
-      />
-    </section>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Detail
+                icon={Mail}
+                label="Email"
+                value={selected.email}
+              />
+
+              <Detail
+                icon={Phone}
+                label="Phone"
+                value={
+                  selected.phone || "Not provided"
+                }
+              />
+
+              <Detail
+                icon={Building2}
+                label="Company"
+                value={
+                  selected.company ||
+                  "Not provided"
+                }
+              />
+
+              <Detail
+                icon={MapPin}
+                label="Location"
+                value={
+                  [
+                    selected.address?.city,
+                    selected.address?.country,
+                  ]
+                    .filter(Boolean)
+                    .join(", ") ||
+                  "Not provided"
+                }
+              />
+            </div>
+
+            {selected.notes && (
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
+                  Notes
+                </p>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">
+                  {selected.notes}
+                </p>
+              </div>
+            )}
+
+            <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() =>
+                  openEdit(selected)
+                }
+                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-950 hover:bg-slate-50"
+              >
+                Edit
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  void deleteClient(selected)
+                }
+                className="rounded-xl bg-red-50 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-100"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {showForm && (
+        <Modal onClose={closeForm}>
+          <form
+            onSubmit={saveClient}
+            className="space-y-5"
+          >
+            <ModalHeader
+              title={
+                editing
+                  ? "Edit Client"
+                  : "Add Client"
+              }
+              onClose={closeForm}
+            />
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field
+                label="Name *"
+                value={form.name ?? ""}
+                onChange={(value) =>
+                  updateField("name", value)
+                }
+                placeholder="John Smith"
+              />
+
+              <Field
+                label="Email *"
+                type="email"
+                value={form.email ?? ""}
+                onChange={(value) =>
+                  updateField("email", value)
+                }
+                placeholder="john@company.com"
+              />
+
+              <Field
+                label="Company"
+                value={form.company ?? ""}
+                onChange={(value) =>
+                  updateField("company", value)
+                }
+                placeholder="Acme Inc."
+              />
+
+              <Field
+                label="Phone"
+                value={form.phone ?? ""}
+                onChange={(value) =>
+                  updateField("phone", value)
+                }
+                placeholder="+91..."
+              />
+
+              <Field
+                label="Website"
+                value={form.website ?? ""}
+                onChange={(value) =>
+                  updateField("website", value)
+                }
+                placeholder="https://..."
+              />
+
+              <Field
+                label="Industry"
+                value={form.industry ?? ""}
+                onChange={(value) =>
+                  updateField("industry", value)
+                }
+                placeholder="Technology"
+              />
+
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-slate-500">
+                  Status
+                </label>
+
+                <select
+                  value={form.status}
+                  onChange={(event) =>
+                    updateField(
+                      "status",
+                      event.target.value
+                    )
+                  }
+                  className="w-full rounded-3xl border border-slate-200 bg-white/90 shadow-sm backdrop-blur-xl px-4 py-3 text-sm font-medium text-slate-950 shadow-sm outline-none transition focus:border-cyan-300 focus:ring-4 focus:ring-cyan-100"
+                >
+                  <option value="lead">
+                    Lead
+                  </option>
+                  <option value="active">
+                    Active
+                  </option>
+                  <option value="inactive">
+                    Inactive
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field
+                label="City"
+                value={
+                  form.address?.city ?? ""
+                }
+                onChange={(value) =>
+                  updateAddress("city", value)
+                }
+                placeholder="Hyderabad"
+              />
+
+              <Field
+                label="State"
+                value={
+                  form.address?.state ?? ""
+                }
+                onChange={(value) =>
+                  updateAddress("state", value)
+                }
+                placeholder="Telangana"
+              />
+
+              <Field
+                label="Country"
+                value={
+                  form.address?.country ?? ""
+                }
+                onChange={(value) =>
+                  updateAddress(
+                    "country",
+                    value
+                  )
+                }
+                placeholder="India"
+              />
+
+              <Field
+                label="Postal Code"
+                value={
+                  form.address?.postalCode ?? ""
+                }
+                onChange={(value) =>
+                  updateAddress(
+                    "postalCode",
+                    value
+                  )
+                }
+                placeholder="500001"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-slate-500">
+                Notes
+              </label>
+
+              <textarea
+                value={form.notes ?? ""}
+                onChange={(event) =>
+                  updateField(
+                    "notes",
+                    event.target.value
+                  )
+                }
+                rows={4}
+                placeholder="Add useful notes about this client..."
+                className="w-full resize-none rounded-3xl border border-slate-200 bg-white/90 shadow-sm backdrop-blur-xl px-4 py-3 text-sm font-medium text-slate-950 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-cyan-300 focus:ring-4 focus:ring-cyan-100"
+              />
+            </div>
+
+            <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={closeForm}
+                disabled={saving}
+                className="rounded-3xl border border-slate-200 bg-white/90 shadow-sm backdrop-blur-xl px-5 py-3 text-sm font-bold text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-950 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                disabled={saving}
+                className="rounded-2xl bg-slate-950 px-6 py-3 text-sm font-black text-white shadow-xl shadow-slate-950/15 transition hover:-translate-y-0.5 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {saving
+                  ? "Saving..."
+                  : editing
+                    ? "Save Changes"
+                    : "Create Client"}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+    </div>
   );
-}
-
-interface StatCardProps {
-  icon: React.ComponentType<{
-    size?: number;
-    className?: string;
-  }>;
-  label: string;
-  value: number;
-  description: string;
-  iconClass?: string;
-  iconBackground?: string;
 }
 
 function StatCard({
   icon: Icon,
   label,
   value,
-  description,
-  iconClass = "text-cyan-600",
-  iconBackground = "bg-cyan-50",
-}: StatCardProps) {
+}: {
+  icon: typeof Users;
+  label: string;
+  value: number;
+}) {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-      <div className="flex items-start justify-between">
-        <div
-          className={`flex h-11 w-11 items-center justify-center rounded-2xl ${iconBackground}`}
-        >
-          <Icon
-            size={20}
-            className={iconClass}
-          />
-        </div>
-      </div>
-
-      <p className="mt-5 text-sm font-semibold text-slate-500">
-        {label}
-      </p>
-
-      <div className="mt-1 flex items-end gap-2">
-        <span className="text-3xl font-black tracking-tight text-slate-950">
+    <div className="rounded-3xl border border-slate-200 bg-white/90 shadow-sm backdrop-blur-xl p-4">
+      <div className="flex items-center justify-between">
+        <Icon size={18} className="text-slate-400" />
+        <span className="text-2xl font-semibold text-slate-950">
           {value}
         </span>
       </div>
 
-      <p className="mt-1 text-xs text-slate-400">
-        {description}
+      <p className="mt-2 text-xs text-slate-400">
+        {label}
       </p>
     </div>
   );
 }
+
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  type?: string;
+}) {
+  return (
+    <div>
+      <label className="mb-1.5 block text-xs font-medium text-slate-500">
+        {label}
+      </label>
+
+      <input
+        type={type}
+        value={value}
+        onChange={(event) =>
+          onChange(event.target.value)
+        }
+        placeholder={placeholder}
+        className="w-full rounded-3xl border border-slate-200 bg-white/90 shadow-sm backdrop-blur-xl px-4 py-3 text-sm font-medium text-slate-950 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-cyan-300 focus:ring-4 focus:ring-cyan-100"
+      />
+    </div>
+  );
+}
+
+function Detail({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Mail;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-3">
+      <div className="flex items-center gap-2 text-slate-400">
+        <Icon size={14} />
+        <span className="text-xs">{label}</span>
+      </div>
+
+      <p className="mt-1.5 truncate text-sm text-slate-950">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function Modal({
+  children,
+  onClose,
+}: {
+  children: React.ReactNode;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/25 p-4 backdrop-blur-md"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl shadow-slate-950/15 sm:p-7">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ModalHeader({
+  title,
+  onClose,
+}: {
+  title: string;
+  onClose: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <h2 className="text-xl font-black tracking-tight text-slate-950">
+        {title}
+      </h2>
+
+      <button
+        type="button"
+        onClick={onClose}
+        className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-950"
+        aria-label="Close"
+      >
+        <X size={18} />
+      </button>
+    </div>
+  );
+}
+
+

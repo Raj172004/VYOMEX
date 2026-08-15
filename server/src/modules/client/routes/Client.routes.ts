@@ -1,25 +1,15 @@
 import { Router } from "express";
-
-import { verifyJWT } from "../../../middleware/jwt.middleware";
-
-import {
-  create,
-  getAll,
-  getById,
-  update,
-  remove,
-} from "../controllers/Client.controller";
+import clientController from "../controllers/Client.controller";
+import { authenticate } from "../../../middleware/jwt.middleware";
 
 const router = Router();
 
-router.post("/", verifyJWT, create);
+router.use(authenticate);
 
-router.get("/", verifyJWT, getAll);
-
-router.get("/:id", verifyJWT, getById);
-
-router.put("/:id", verifyJWT, update);
-
-router.delete("/:id", verifyJWT, remove);
+router.get("/", clientController.getClients.bind(clientController));
+router.get("/:id", clientController.getById.bind(clientController));
+router.post("/", clientController.create.bind(clientController));
+router.patch("/:id", clientController.update.bind(clientController));
+router.delete("/:id", clientController.delete.bind(clientController));
 
 export default router;

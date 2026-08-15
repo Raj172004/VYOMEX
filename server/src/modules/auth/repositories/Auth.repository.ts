@@ -2,7 +2,7 @@ import { User } from "../../user/models/User.model";
 
 export class AuthRepository {
   async findByEmail(email: string) {
-    return User.findOne({ email });
+    return User.findOne({ email }).select("+password");
   }
 
   async create(data: {

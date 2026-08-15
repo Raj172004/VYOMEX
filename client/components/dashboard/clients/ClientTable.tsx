@@ -1,4 +1,4 @@
-ï»¿"use client";
+"use client";
 
 import {
   Building2,
@@ -29,13 +29,13 @@ function getInitials(
 
 function formatDate(date?: string) {
   if (!date) {
-    return "â€”";
+    return "—";
   }
 
   const parsedDate = new Date(date);
 
   if (Number.isNaN(parsedDate.getTime())) {
-    return "â€”";
+    return "—";
   }
 
   return parsedDate.toLocaleDateString("en-IN", {
@@ -117,15 +117,13 @@ export default function ClientTable({
                     <div className="flex items-center gap-3">
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-sm font-black text-white shadow-lg shadow-blue-500/15">
                         {getInitials(
-                          client.firstName,
-                          client.lastName,
-                        )}
+                          client.name, client.name, )}
                       </div>
 
                       <div className="min-w-0">
                         <p className="truncate font-bold text-slate-900">
-                          {client.firstName}{" "}
-                          {client.lastName}
+                          {client.name}{" "}
+                          {client.name}
                         </p>
 
                         <p className="mt-0.5 truncate text-sm text-slate-500">
@@ -199,7 +197,7 @@ export default function ClientTable({
                           onView(client)
                         }
                         className="rounded-xl p-2.5 text-slate-500 transition hover:bg-blue-50 hover:text-blue-600"
-                        aria-label={`View ${client.firstName} ${client.lastName}`}
+                        aria-label={`View ${client.name} ${client.name}`}
                         title="View client"
                       >
                         <Eye size={16} />
@@ -211,7 +209,7 @@ export default function ClientTable({
                           onEdit(client)
                         }
                         className="rounded-xl p-2.5 text-slate-500 transition hover:bg-cyan-50 hover:text-cyan-600"
-                        aria-label={`Edit ${client.firstName} ${client.lastName}`}
+                        aria-label={`Edit ${client.name} ${client.name}`}
                         title="Edit client"
                       >
                         <Pencil size={16} />
@@ -223,7 +221,7 @@ export default function ClientTable({
                           onDelete(client)
                         }
                         className="rounded-xl p-2.5 text-slate-500 transition hover:bg-red-50 hover:text-red-600"
-                        aria-label={`Delete ${client.firstName} ${client.lastName}`}
+                        aria-label={`Delete ${client.name} ${client.name}`}
                         title="Delete client"
                       >
                         <Trash2 size={16} />
@@ -248,15 +246,13 @@ export default function ClientTable({
               <div className="flex min-w-0 items-center gap-3">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-sm font-black text-white">
                   {getInitials(
-                    client.firstName,
-                    client.lastName,
-                  )}
+                    client.name, client.name, )}
                 </div>
 
                 <div className="min-w-0">
                   <h3 className="truncate font-black text-slate-900">
-                    {client.firstName}{" "}
-                    {client.lastName}
+                    {client.name}{" "}
+                    {client.name}
                   </h3>
 
                   <p className="truncate text-sm text-slate-500">
@@ -323,7 +319,7 @@ export default function ClientTable({
                     onView(client)
                   }
                   className="rounded-xl border border-slate-200 p-2.5 text-slate-500 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
-                  aria-label={`View ${client.firstName} ${client.lastName}`}
+                  aria-label={`View ${client.name} ${client.name}`}
                   title="View client"
                 >
                   <Eye size={16} />
@@ -335,7 +331,7 @@ export default function ClientTable({
                     onEdit(client)
                   }
                   className="rounded-xl border border-slate-200 p-2.5 text-slate-500 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-600"
-                  aria-label={`Edit ${client.firstName} ${client.lastName}`}
+                  aria-label={`Edit ${client.name} ${client.name}`}
                   title="Edit client"
                 >
                   <Pencil size={16} />
@@ -347,7 +343,7 @@ export default function ClientTable({
                     onDelete(client)
                   }
                   className="rounded-xl border border-slate-200 p-2.5 text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
-                  aria-label={`Delete ${client.firstName} ${client.lastName}`}
+                  aria-label={`Delete ${client.name} ${client.name}`}
                   title="Delete client"
                 >
                   <Trash2 size={16} />
@@ -360,3 +356,8 @@ export default function ClientTable({
     </>
   );
 }
+
+
+
+
+

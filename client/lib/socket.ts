@@ -3,18 +3,35 @@ import { io, Socket } from "socket.io-client";
 import { getAccessToken } from "@/lib/auth/tokens";
 
 const SOCKET_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/?$/, "") ??
-  "http://localhost:5000";
+  process.env.NEXT_PUBLIC_API_URL?.replace(
+    /\/api\/?$/,
+    ""
+  ) ?? "http://localhost:5000";
 
 let socket: Socket | null = null;
 
 export const getSocket = (): Socket => {
   if (!socket) {
-    console.log("[Socket.IO] Creating socket:", SOCKET_URL);
+    console.log(
+      "[Socket.IO] Creating socket:",
+      SOCKET_URL
+    );
 
     socket = io(SOCKET_URL, {
       autoConnect: false,
-      transports: ["websocket"],
+
+      // Start with polling and allow Socket.IO
+      // to upgrade to WebSocket automatically.
+      transports: ["polling", "websocket"],
+
+      upgrade: true,
+
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+
+      timeout: 10000,
     });
 
     socket.on("connect", () => {

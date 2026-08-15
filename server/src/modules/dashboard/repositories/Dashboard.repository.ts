@@ -1,48 +1,114 @@
-import ClientModel from "../../client/models/Client.model";
-import ProjectModel from "../../project/models/Project.model";
-import TaskModel from "../../task/models/Task.model";
-import {
-  Invoice,
-  InvoiceStatus,
-} from "../../invoice/models/Invoice.model";
+﻿import { Types } from "mongoose";
+
+import Project from "../../project/models/Project.model";
+import Task from "../../task/models/Task.model";
+import Client from "../../client/models/Client.model";
+import { Invoice } from "../../invoice/models/Invoice.model";
 
 class DashboardRepository {
-  async getOverview() {
+  private getOwner(userId: string) {
+    return new Types.ObjectId(userId);
+  }
+
+  // ============================================================
+  // OVERVIEW
+  // ============================================================
+
+  async getOverview(userId: string) {
+    const createdBy = this.getOwner(userId);
+
     const [
-      totalClients,
-      totalProjects,
-      totalTasks,
-      totalInvoices,
-      revenue,
+      projectCount,
+      taskCount,
+      clientCount,
+      invoiceCount,
+      revenueResult,
+      recentProjects,
+      recentTasks,
+      recentClients,
     ] = await Promise.all([
-      ClientModel.countDocuments(),
-      ProjectModel.countDocuments(),
-      TaskModel.countDocuments(),
-      Invoice.countDocuments(),
+      Project.countDocuments({
+        createdBy: createdBy,
+      }),
+
+      Task.countDocuments({
+        createdBy: createdBy,
+      }),
+
+      Client.countDocuments({ owner: createdBy }),
+
+      Invoice.countDocuments({
+        createdBy: createdBy,
+      }),
+
       Invoice.aggregate([
+        {
+          $match: {
+            createdBy: createdBy,
+            status: "paid",
+          },
+        },
         {
           $group: {
             _id: null,
-            totalRevenue: {
+            total: {
               $sum: "$total",
             },
           },
         },
       ]),
+
+      Project.find({
+        createdBy: createdBy,
+      })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .lean()
+        .exec(),
+
+      Task.find({
+        createdBy: createdBy,
+      })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .lean()
+        .exec(),
+
+      Client.find({ owner: createdBy })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .lean()
+        .exec(),
     ]);
 
     return {
-      totalClients,
-      totalProjects,
-      totalTasks,
-      totalInvoices,
-      totalRevenue:
-        revenue[0]?.totalRevenue ?? 0,
+      totalClients: clientCount,
+      totalProjects: projectCount,
+      totalTasks: taskCount,
+      totalInvoices: invoiceCount,
+      totalRevenue: Number(
+        revenueResult[0]?.total ?? 0
+      ),
+
+      recentProjects,
+      recentTasks,
+      recentClients,
     };
   }
 
-  async getProjectAnalytics() {
-    const result = await ProjectModel.aggregate([
+  // ============================================================
+  // PROJECT ANALYTICS
+  // ============================================================
+
+  async getProjectAnalytics(userId: string) {
+    const createdBy = this.getOwner(userId);
+
+    const result = await Project.aggregate([
+      {
+        $match: {
+          createdBy: createdBy,
+        },
+      },
       {
         $group: {
           _id: "$status",
@@ -53,7 +119,7 @@ class DashboardRepository {
       },
     ]);
 
-    const analytics = {
+    const statusCounts = {
       planning: 0,
       active: 0,
       completed: 0,
@@ -63,103 +129,144 @@ class DashboardRepository {
     for (const item of result) {
       switch (item._id) {
         case "planning":
-          analytics.planning = item.count;
+          statusCounts.planning = Number(
+            item.count
+          );
           break;
 
         case "active":
-          analytics.active = item.count;
+          statusCounts.active = Number(
+            item.count
+          );
           break;
 
         case "completed":
-          analytics.completed = item.count;
+          statusCounts.completed = Number(
+            item.count
+          );
           break;
 
         case "on-hold":
-          analytics.onHold = item.count;
+          statusCounts.onHold = Number(
+            item.count
+          );
           break;
       }
     }
 
-    return analytics;
+    return statusCounts;
   }
 
-  async getTaskAnalytics() {
-    const statusResult = await TaskModel.aggregate([
-      {
-        $group: {
-          _id: "$status",
-          count: {
-            $sum: 1,
-          },
-        },
-      },
-    ]);
+  // ============================================================
+  // TASK ANALYTICS
+  // ============================================================
 
-    const priorityResult = await TaskModel.aggregate([
-      {
-        $group: {
-          _id: "$priority",
-          count: {
-            $sum: 1,
-          },
-        },
-      },
-    ]);
+  async getTaskAnalytics(userId: string) {
+    const createdBy = this.getOwner(userId);
 
-    const analytics = {
-      status: {
-        todo: 0,
-        inProgress: 0,
-        review: 0,
-        done: 0,
-      },
-      priority: {
-        low: 0,
-        medium: 0,
-        high: 0,
-        critical: 0,
-      },
+    const [statusResult, priorityResult] =
+      await Promise.all([
+        Task.aggregate([
+          {
+            $match: {
+              createdBy: createdBy,
+            },
+          },
+          {
+            $group: {
+              _id: "$status",
+              count: {
+                $sum: 1,
+              },
+            },
+          },
+        ]),
+
+        Task.aggregate([
+          {
+            $match: {
+              createdBy: createdBy,
+            },
+          },
+          {
+            $group: {
+              _id: "$priority",
+              count: {
+                $sum: 1,
+              },
+            },
+          },
+        ]),
+      ]);
+
+    const status = {
+      todo: 0,
+      inProgress: 0,
+      review: 0,
+      done: 0,
+    };
+
+    const priority = {
+      low: 0,
+      medium: 0,
+      high: 0,
+      critical: 0,
     };
 
     for (const item of statusResult) {
       switch (item._id) {
         case "todo":
-          analytics.status.todo = item.count;
+          status.todo = Number(item.count);
           break;
+
         case "in-progress":
-          analytics.status.inProgress = item.count;
+          status.inProgress = Number(
+            item.count
+          );
           break;
+
         case "review":
-          analytics.status.review = item.count;
+          status.review = Number(item.count);
           break;
+
         case "done":
-          analytics.status.done = item.count;
+          status.done = Number(item.count);
           break;
       }
     }
 
     for (const item of priorityResult) {
-      switch (item._id) {
-        case "low":
-          analytics.priority.low = item.count;
-          break;
-        case "medium":
-          analytics.priority.medium = item.count;
-          break;
-        case "high":
-          analytics.priority.high = item.count;
-          break;
-        case "critical":
-          analytics.priority.critical = item.count;
-          break;
+      if (
+        Object.prototype.hasOwnProperty.call(
+          priority,
+          item._id
+        )
+      ) {
+        priority[
+          item._id as keyof typeof priority
+        ] = Number(item.count);
       }
     }
 
-    return analytics;
+    return {
+      status,
+      priority,
+    };
   }
 
-  async getInvoiceAnalytics() {
+  // ============================================================
+  // INVOICE ANALYTICS
+  // ============================================================
+
+  async getInvoiceAnalytics(userId: string) {
+    const createdBy = this.getOwner(userId);
+
     const result = await Invoice.aggregate([
+      {
+        $match: {
+          createdBy: createdBy,
+        },
+      },
       {
         $group: {
           _id: "$status",
@@ -175,24 +282,29 @@ class DashboardRepository {
       sent: 0,
       paid: 0,
       overdue: 0,
+      total: 0,
     };
 
     for (const item of result) {
+      const count = Number(item.count ?? 0);
+
+      analytics.total += count;
+
       switch (item._id) {
-        case InvoiceStatus.DRAFT:
-          analytics.draft = item.count;
+        case "draft":
+          analytics.draft = count;
           break;
 
-        case InvoiceStatus.SENT:
-          analytics.sent = item.count;
+        case "sent":
+          analytics.sent = count;
           break;
 
-        case InvoiceStatus.PAID:
-          analytics.paid = item.count;
+        case "paid":
+          analytics.paid = count;
           break;
 
-        case InvoiceStatus.OVERDUE:
-          analytics.overdue = item.count;
+        case "overdue":
+          analytics.overdue = count;
           break;
       }
     }
@@ -200,157 +312,18 @@ class DashboardRepository {
     return analytics;
   }
 
-  async getRecentActivity() {
-  const [projects, tasks, invoices] = await Promise.all([
-    ProjectModel.find()
-      .select("title status createdAt")
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .lean(),
+  // ============================================================
+  // REVENUE ANALYTICS
+  // ============================================================
 
-    TaskModel.find()
-      .select("title status createdAt")
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .lean(),
+  async getRevenueAnalytics(userId: string) {
+    const createdBy = this.getOwner(userId);
 
-    Invoice.find()
-      .select(
-        "invoiceNumber total status createdAt"
-      )
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .lean(),
-  ]);
-
-  return {
-    projects,
-    tasks,
-    invoices,
-  };
-}
-
-async getDeadlines() {
-  const today = new Date();
-
-  const nextWeek = new Date();
-
-  nextWeek.setDate(today.getDate() + 7);
-
-  const overdueTasks = await TaskModel.find({
-    dueDate: {
-      $lt: today,
-    },
-    status: {
-      $ne: "done",
-    },
-  })
-    .select(
-      "title dueDate priority status"
-    )
-    .sort({
-      dueDate: 1,
-    })
-    .lean();
-
-  const upcomingTasks = await TaskModel.find({
-    dueDate: {
-      $gte: today,
-      $lte: nextWeek,
-    },
-  })
-    .select(
-      "title dueDate priority status"
-    )
-    .sort({
-      dueDate: 1,
-    })
-    .lean();
-
-  const upcomingProjects =
-    await ProjectModel.find({
-      endDate: {
-        $gte: today,
-        $lte: nextWeek,
-      },
-    })
-      .select(
-        "title endDate status"
-      )
-      .sort({
-        endDate: 1,
-      })
-      .lean();
-
-  return {
-    overdueTasks,
-    upcomingTasks,
-    upcomingProjects,
-  };
-}
-
-async getTopClients() {
-  return Invoice.aggregate([
-    {
-      $group: {
-        _id: "$client",
-
-        totalRevenue: {
-          $sum: "$total",
-        },
-
-        invoiceCount: {
-          $sum: 1,
-        },
-      },
-    },
-
-    {
-      $sort: {
-        totalRevenue: -1,
-      },
-    },
-
-    {
-      $limit: 5,
-    },
-
-    {
-      $lookup: {
-        from: "clients",
-        localField: "_id",
-        foreignField: "_id",
-        as: "client",
-      },
-    },
-
-    {
-      $unwind: "$client",
-    },
-
-    {
-      $project: {
-        _id: 0,
-
-        clientId: "$client._id",
-
-        company: "$client.company",
-
-        contactPerson: "$client.contactPerson",
-
-        totalRevenue: 1,
-
-        invoiceCount: 1,
-      },
-    },
-  ]);
-}
-
-  async getRevenueAnalytics() {
-    const revenue = await Invoice.aggregate([
+    const result = await Invoice.aggregate([
       {
         $match: {
-          status: InvoiceStatus.PAID,
+          createdBy: createdBy,
+          status: "paid",
         },
       },
       {
@@ -376,12 +349,281 @@ async getTopClients() {
       },
     ]);
 
-    return revenue.map((item) => ({
-      year: item._id.year,
-      month: item._id.month,
-      revenue: item.revenue,
+    return result.map((item) => ({
+      year: Number(item._id.year),
+      month: Number(item._id.month),
+      revenue: Number(item.revenue ?? 0),
     }));
+  }
+
+  // ============================================================
+  // RECENT ACTIVITY
+  // ============================================================
+
+  async getRecentActivity(userId: string) {
+    const createdBy = this.getOwner(userId);
+
+    const [
+      projects,
+      tasks,
+      invoices,
+    ] = await Promise.all([
+      Project.find({
+        createdBy: createdBy,
+      })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .lean()
+        .exec(),
+
+      Task.find({
+        createdBy: createdBy,
+      })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .lean()
+        .exec(),
+
+      Invoice.find({
+        createdBy: createdBy,
+      })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .lean()
+        .exec(),
+    ]);
+
+    return {
+      projects,
+      tasks,
+      invoices,
+    };
+  }
+
+  // ============================================================
+  // DEADLINES
+  // ============================================================
+
+  async getDeadlines(userId: string) {
+    const createdBy = this.getOwner(userId);
+
+    const [
+      projects,
+      tasks,
+      invoices,
+    ] = await Promise.all([
+      Project.find({
+        createdBy: createdBy,
+      })
+        .sort({ endDate: 1 })
+        .limit(10)
+        .lean()
+        .exec(),
+
+      Task.find({
+        createdBy: createdBy,
+      })
+        .sort({ dueDate: 1 })
+        .limit(10)
+        .lean()
+        .exec(),
+
+      Invoice.find({
+        createdBy: createdBy,
+      })
+        .sort({ dueDate: 1 })
+        .limit(10)
+        .lean()
+        .exec(),
+    ]);
+
+    return [
+      ...projects.map((project) => ({
+        _id: project._id,
+        title: project.title,
+        dueDate: project.endDate,
+        status: project.status,
+        type: "project" as const,
+      })),
+
+      ...tasks.map((task) => ({
+        _id: task._id,
+        title: task.title,
+        dueDate: task.dueDate,
+        status: task.status,
+        type: "task" as const,
+      })),
+
+      ...invoices.map((invoice) => ({
+        _id: invoice._id,
+        title: invoice.invoiceNumber,
+        dueDate: invoice.dueDate,
+        status: invoice.status,
+        type: "invoice" as const,
+      })),
+    ]
+      .sort(
+        (a, b) =>
+          new Date(a.dueDate).getTime() -
+          new Date(b.dueDate).getTime()
+      )
+      .slice(0, 10);
+  }
+
+  // ============================================================
+  // TOP CLIENTS
+  // ============================================================
+
+  async getTopClients(userId: string) {
+    const createdBy = this.getOwner(userId);
+
+    const clients = await Client.find({ owner: createdBy })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .lean()
+      .exec();
+
+    const clientIds = clients.map(
+      (client) => client._id
+    );
+
+    const [projectCounts, revenueCounts] =
+      await Promise.all([
+        Project.aggregate([
+          {
+            $match: {
+              createdBy: createdBy,
+              client: {
+                $in: clientIds,
+              },
+            },
+          },
+          {
+            $group: {
+              _id: "$client",
+              count: {
+                $sum: 1,
+              },
+            },
+          },
+        ]),
+
+        Invoice.aggregate([
+          {
+            $match: {
+              createdBy: createdBy,
+              client: {
+                $in: clientIds,
+              },
+              status: "paid",
+            },
+          },
+          {
+            $group: {
+              _id: "$client",
+              totalRevenue: {
+                $sum: "$total",
+              },
+            },
+          },
+        ]),
+      ]);
+
+    const projectMap = new Map(
+      projectCounts.map((item) => [
+        item._id.toString(),
+        Number(item.count ?? 0),
+      ])
+    );
+
+    const revenueMap = new Map(
+      revenueCounts.map((item) => [
+        item._id.toString(),
+        Number(item.totalRevenue ?? 0),
+      ])
+    );
+
+    return clients.map((client) => ({
+      _id: client._id,
+      name: client.name,
+      company: client.company,
+      totalRevenue:
+        revenueMap.get(client._id.toString()) ?? 0,
+      projectCount:
+        projectMap.get(client._id.toString()) ?? 0,
+    }));
+  }
+
+  // ============================================================
+  // BASIC COUNTS
+  // ============================================================
+
+  async getProjectCount(userId: string) {
+    return Project.countDocuments({
+      createdBy: this.getOwner(userId),
+    });
+  }
+
+  async getTaskCount(userId: string) {
+    return Task.countDocuments({
+      createdBy: this.getOwner(userId),
+    });
+  }
+
+  async getClientCount(userId: string) {
+    return Client.countDocuments({ owner: this.getOwner(userId) });
+  }
+
+  // ============================================================
+  // RECENT DATA
+  // ============================================================
+
+  async getRecentProjects(userId: string) {
+    return Project.find({
+      createdBy: this.getOwner(userId),
+    })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .lean()
+      .exec();
+  }
+
+  async getRecentTasks(userId: string) {
+    return Task.find({
+      createdBy: this.getOwner(userId),
+    })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .lean()
+      .exec();
+  }
+
+  async getRecentClients(userId: string) {
+    return Client.find({ owner: this.getOwner(userId) })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .lean()
+      .exec();
+  }
+
+  async getTaskStatus(userId: string) {
+    return Task.aggregate([
+      {
+        $match: {
+          createdBy: this.getOwner(userId),
+        },
+      },
+      {
+        $group: {
+          _id: "$status",
+          count: {
+            $sum: 1,
+          },
+        },
+      },
+    ]);
   }
 }
 
 export default new DashboardRepository();
+

@@ -1,10 +1,15 @@
-import {
+﻿import {
   body,
   param,
   validationResult,
 } from "express-validator";
 
-import { NextFunction, Request, Response } from "express";
+import {
+  NextFunction,
+  Request,
+  Response,
+} from "express";
+
 import { ApiError } from "../../../utils/ApiError";
 
 const handleValidationErrors = (
@@ -75,17 +80,6 @@ export const validateCreateNotification = [
       "Notification type must be success, info, warning, or error"
     ),
 
-  body("isRead")
-    .optional()
-    .isBoolean()
-    .withMessage("isRead must be a boolean"),
-
-  body("user")
-    .optional()
-    .trim()
-    .isMongoId()
-    .withMessage("Invalid user ID"),
-
   handleValidationErrors,
 ];
 
@@ -130,12 +124,6 @@ export const validateUpdateNotification = [
     .optional()
     .isBoolean()
     .withMessage("isRead must be a boolean"),
-
-  body("user")
-    .optional()
-    .trim()
-    .isMongoId()
-    .withMessage("Invalid user ID"),
 
   handleValidationErrors,
 ];

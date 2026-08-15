@@ -1,36 +1,36 @@
-import dashboardRepository from "../repositories/Dashboard.repository";
+﻿import dashboardRepository from "../repositories/Dashboard.repository";
 
 class DashboardService {
-  async getOverview() {
-    return dashboardRepository.getOverview();
+  async getOverview(ownerId: string) {
+    return dashboardRepository.getOverview(ownerId);
   }
 
-  async getProjectAnalytics() {
-    return dashboardRepository.getProjectAnalytics();
+  async getProjectAnalytics(ownerId: string) {
+    return dashboardRepository.getProjectAnalytics(ownerId);
   }
 
-  async getTaskAnalytics() {
-    return dashboardRepository.getTaskAnalytics();
+  async getTaskAnalytics(ownerId: string) {
+    return dashboardRepository.getTaskAnalytics(ownerId);
   }
 
-  async getInvoiceAnalytics() {
-    return dashboardRepository.getInvoiceAnalytics();
+  async getInvoiceAnalytics(ownerId: string) {
+    return dashboardRepository.getInvoiceAnalytics(ownerId);
   }
 
-  async getRevenueAnalytics() {
-    return dashboardRepository.getRevenueAnalytics();
+  async getRevenueAnalytics(ownerId: string) {
+    return dashboardRepository.getRevenueAnalytics(ownerId);
   }
 
-  async getRecentActivity() {
-    return dashboardRepository.getRecentActivity();
+  async getRecentActivity(ownerId: string) {
+    return dashboardRepository.getRecentActivity(ownerId);
   }
 
-  async getDeadlines() {
-    return dashboardRepository.getDeadlines();
+  async getDeadlines(ownerId: string) {
+    return dashboardRepository.getDeadlines(ownerId);
   }
 
-  async getTopClients() {
-    return dashboardRepository.getTopClients();
+  async getTopClients(ownerId: string) {
+    return dashboardRepository.getTopClients(ownerId);
   }
 }
 

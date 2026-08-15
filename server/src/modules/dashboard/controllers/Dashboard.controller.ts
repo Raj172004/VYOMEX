@@ -1,4 +1,4 @@
-import {
+﻿import {
   NextFunction,
   Request,
   Response,
@@ -13,10 +13,15 @@ class DashboardController {
     next: NextFunction
   ) {
     try {
-      const dashboard =
-        await dashboardService.getOverview();
+      const ownerId =
+        req.user!._id.toString();
 
-      res.status(200).json({
+      const dashboard =
+        await dashboardService.getOverview(
+          ownerId
+        );
+
+      return res.status(200).json({
         success: true,
         data: dashboard,
       });
@@ -31,10 +36,15 @@ class DashboardController {
     next: NextFunction
   ) {
     try {
-      const analytics =
-        await dashboardService.getProjectAnalytics();
+      const ownerId =
+        req.user!._id.toString();
 
-      res.status(200).json({
+      const analytics =
+        await dashboardService.getProjectAnalytics(
+          ownerId
+        );
+
+      return res.status(200).json({
         success: true,
         data: analytics,
       });
@@ -42,95 +52,121 @@ class DashboardController {
       next(error);
     }
   }
+
   async getInvoices(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
-  try {
-    const analytics =
-      await dashboardService.getInvoiceAnalytics();
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const ownerId =
+        req.user!._id.toString();
 
-    res.status(200).json({
-      success: true,
-      data: analytics,
-    });
-  } catch (error) {
-    next(error);
+      const analytics =
+        await dashboardService.getInvoiceAnalytics(
+          ownerId
+        );
+
+      return res.status(200).json({
+        success: true,
+        data: analytics,
+      });
+    } catch (error) {
+      next(error);
+    }
   }
-}
 
-async getRevenue(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
-  try {
-    const revenue =
-      await dashboardService.getRevenueAnalytics();
+  async getRevenue(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const ownerId =
+        req.user!._id.toString();
 
-    res.status(200).json({
-      success: true,
-      data: revenue,
-    });
-  } catch (error) {
-    next(error);
+      const revenue =
+        await dashboardService.getRevenueAnalytics(
+          ownerId
+        );
+
+      return res.status(200).json({
+        success: true,
+        data: revenue,
+      });
+    } catch (error) {
+      next(error);
+    }
   }
-}
 
-async getActivity(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
-  try {
-    const activity =
-      await dashboardService.getRecentActivity();
+  async getActivity(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const ownerId =
+        req.user!._id.toString();
 
-    res.status(200).json({
-      success: true,
-      data: activity,
-    });
-  } catch (error) {
-    next(error);
+      const activity =
+        await dashboardService.getRecentActivity(
+          ownerId
+        );
+
+      return res.status(200).json({
+        success: true,
+        data: activity,
+      });
+    } catch (error) {
+      next(error);
+    }
   }
-}
 
-async getDeadlines(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
-  try {
-    const deadlines =
-      await dashboardService.getDeadlines();
+  async getDeadlines(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const ownerId =
+        req.user!._id.toString();
 
-    res.status(200).json({
-      success: true,
-      data: deadlines,
-    });
-  } catch (error) {
-    next(error);
+      const deadlines =
+        await dashboardService.getDeadlines(
+          ownerId
+        );
+
+      return res.status(200).json({
+        success: true,
+        data: deadlines,
+      });
+    } catch (error) {
+      next(error);
+    }
   }
-}
 
-async getTopClients(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
-  try {
-    const clients =
-      await dashboardService.getTopClients();
+  async getTopClients(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const ownerId =
+        req.user!._id.toString();
 
-    res.status(200).json({
-      success: true,
-      data: clients,
-    });
-  } catch (error) {
-    next(error);
+      const clients =
+        await dashboardService.getTopClients(
+          ownerId
+        );
+
+      return res.status(200).json({
+        success: true,
+        data: clients,
+      });
+    } catch (error) {
+      next(error);
+    }
   }
-}
 
   async getTasks(
     req: Request,
@@ -138,10 +174,15 @@ async getTopClients(
     next: NextFunction
   ) {
     try {
-      const analytics =
-        await dashboardService.getTaskAnalytics();
+      const ownerId =
+        req.user!._id.toString();
 
-      res.status(200).json({
+      const analytics =
+        await dashboardService.getTaskAnalytics(
+          ownerId
+        );
+
+      return res.status(200).json({
         success: true,
         data: analytics,
       });

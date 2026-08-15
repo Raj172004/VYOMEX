@@ -1,4 +1,4 @@
-ï»¿"use client";
+"use client";
 
 import {
   Building2,
@@ -28,13 +28,13 @@ interface ClientDetailsModalProps {
 
 function formatDate(date?: string) {
   if (!date) {
-    return "â€”";
+    return "—";
   }
 
   const parsedDate = new Date(date);
 
   if (Number.isNaN(parsedDate.getTime())) {
-    return "â€”";
+    return "—";
   }
 
   return parsedDate.toLocaleDateString("en-IN", {
@@ -46,13 +46,13 @@ function formatDate(date?: string) {
 
 function formatDateTime(date?: string) {
   if (!date) {
-    return "â€”";
+    return "—";
   }
 
   const parsedDate = new Date(date);
 
   if (Number.isNaN(parsedDate.getTime())) {
-    return "â€”";
+    return "—";
   }
 
   return parsedDate.toLocaleString("en-IN", {
@@ -212,10 +212,7 @@ export default function ClientDetailsModal({
           <div className="relative flex items-start justify-between gap-5 px-6 py-6 sm:px-8 sm:py-7">
             <div className="flex min-w-0 items-center gap-4">
               <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-lg font-black text-white shadow-xl shadow-blue-500/20">
-                {getInitials(
-                  activeClient.firstName,
-                  activeClient.lastName,
-                )}
+                {getInitials(activeClient.name, activeClient.company ?? "")}
               </div>
 
               <div className="min-w-0">
@@ -227,8 +224,8 @@ export default function ClientDetailsModal({
                   id={titleId}
                   className="mt-1 truncate text-xl font-black tracking-tight text-slate-950 sm:text-2xl"
                 >
-                  {activeClient.firstName}{" "}
-                  {activeClient.lastName}
+                  {activeClient.name}{" "}
+                  {activeClient.company ?? ""}
                 </h2>
 
                 <p className="mt-1 flex items-center gap-1.5 truncate text-sm text-slate-500">
@@ -370,8 +367,8 @@ export default function ClientDetailsModal({
 
           {/* Location */}
           {(activeClient.address ||
-            activeClient.city ||
-            activeClient.country) && (
+            (activeClient.address as any)?.city ||
+            (activeClient.address as any)?.country) && (
             <section className="mt-7">
               <div className="mb-3 flex items-center gap-2">
                 <div className="h-5 w-1 rounded-full bg-blue-500" />
@@ -390,14 +387,14 @@ export default function ClientDetailsModal({
                   <div>
                     {activeClient.address && (
                       <p className="text-sm font-semibold text-slate-800">
-                        {activeClient.address}
+                        {typeof activeClient.address === "string" ? activeClient.address : activeClient.address?.street ?? ""}
                       </p>
                     )}
 
                     <p className="mt-1 text-sm text-slate-500">
                       {[
-                        activeClient.city,
-                        activeClient.country,
+                        (activeClient.address as any)?.city,
+                        (activeClient.address as any)?.country,
                       ]
                         .filter(Boolean)
                         .join(", ")}
@@ -482,3 +479,12 @@ export default function ClientDetailsModal({
     </div>
   );
 }
+
+
+
+
+
+
+
+
+

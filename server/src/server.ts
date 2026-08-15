@@ -1,4 +1,4 @@
-import { createServer } from "http";
+﻿import { createServer } from "http";
 
 import app from "./app";
 import { connectDatabase } from "./config/db";
@@ -12,15 +12,25 @@ async function bootstrap() {
 
   initializeSocket(httpServer);
 
-  httpServer.listen(env.PORT, () => {
-    console.log(
-      `Server running on http://localhost:${env.PORT}`
-    );
+  httpServer.listen(
+    env.PORT,
+    () => {
+      console.log(
+        `Server running on http://localhost:${env.PORT}`
+      );
 
-    console.log(
-      `Socket.IO running on ws://localhost:${env.PORT}`
-    );
-  });
+      console.log(
+        `Socket.IO running on ws://localhost:${env.PORT}`
+      );
+    }
+  );
 }
 
-bootstrap();
+bootstrap().catch((error) => {
+  console.error(
+    "Failed to start VYOMEX server:",
+    error
+  );
+
+  process.exit(1);
+});

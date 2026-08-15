@@ -1,93 +1,94 @@
-import { Document, model, Schema } from "mongoose";
+import { Schema, model, Document, Types } from "mongoose";
 
 export interface IClient extends Document {
-  firstName: string;
-  lastName: string;
-  company: string;
+  _id: Types.ObjectId;
+  owner: Types.ObjectId;
+  name: string;
+  company?: string;
   email: string;
-  phone: string;
-  website: string;
-  industry: string;
-  address: string;
-  city: string;
-  country: string;
-  status: "active" | "inactive";
-  notes: string;
-  createdBy: Schema.Types.ObjectId;
+  phone?: string;
+  website?: string;
+  industry?: string;
+  status: "active" | "inactive" | "lead";
+  notes?: string;
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    postalCode?: string;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
 
-const ClientSchema = new Schema<IClient>(
+const clientSchema = new Schema<IClient>(
   {
-    firstName: {
-      type: String,
+    owner: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
       required: true,
-      trim: true,
+      index: true,
     },
 
-    lastName: {
+    name: {
       type: String,
       required: true,
       trim: true,
+      minlength: 2,
+      maxlength: 120,
     },
 
     company: {
       type: String,
-      required: true,
+      trim: true,
+      maxlength: 160,
     },
 
     email: {
       type: String,
       required: true,
-      unique: true,
+      trim: true,
+      lowercase: true,
+      maxlength: 180,
     },
 
     phone: {
       type: String,
-      default: "",
+      trim: true,
+      maxlength: 40,
     },
 
     website: {
       type: String,
-      default: "",
+      trim: true,
+      maxlength: 250,
     },
 
     industry: {
       type: String,
-      default: "",
-    },
-
-    address: {
-      type: String,
-      default: "",
-    },
-
-    city: {
-      type: String,
-      default: "",
-    },
-
-    country: {
-      type: String,
-      default: "",
+      trim: true,
+      maxlength: 100,
     },
 
     status: {
       type: String,
-      enum: ["active", "inactive"],
-      default: "active",
+      enum: ["active", "inactive", "lead"],
+      default: "lead",
+      index: true,
     },
 
     notes: {
       type: String,
-      default: "",
+      maxlength: 5000,
     },
 
-    createdBy: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
+    address: {
+      street: String,
+      city: String,
+      state: String,
+      country: String,
+      postalCode: String,
     },
   },
   {
@@ -95,7 +96,19 @@ const ClientSchema = new Schema<IClient>(
   }
 );
 
-export default model<IClient>(
-  "Client",
-  ClientSchema
-);
+clientSchema.index({
+  owner: 1,
+  email: 1,
+});
+
+clientSchema.index({
+  owner: 1,
+  status: 1,
+});
+
+clientSchema.index({
+  owner: 1,
+  createdAt: -1,
+});
+
+export default model<IClient>("Client", clientSchema);

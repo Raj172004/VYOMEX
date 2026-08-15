@@ -1,23 +1,61 @@
-import { Router } from "express";
+﻿import { Router } from "express";
+
+import { verifyJWT } from "../../../middleware/jwt.middleware";
 
 import dashboardController from "../controllers/Dashboard.controller";
 
 const router = Router();
 
-router.get("/overview", dashboardController.getOverview);
+/**
+ * All dashboard endpoints require authentication.
+ *
+ * verifyJWT populates:
+ * req.user = {
+ *   _id,
+ *   email,
+ *   role
+ * }
+ */
+router.use(verifyJWT);
 
-router.get("/projects", dashboardController.getProjects);
+router.get(
+  "/overview",
+  dashboardController.getOverview
+);
 
-router.get("/tasks", dashboardController.getTasks);
+router.get(
+  "/projects",
+  dashboardController.getProjects
+);
 
-router.get("/invoices", dashboardController.getInvoices);
+router.get(
+  "/tasks",
+  dashboardController.getTasks
+);
 
-router.get("/revenue", dashboardController.getRevenue);
+router.get(
+  "/invoices",
+  dashboardController.getInvoices
+);
 
-router.get("/activity", dashboardController.getActivity);
+router.get(
+  "/revenue",
+  dashboardController.getRevenue
+);
 
-router.get("/deadlines", dashboardController.getDeadlines);
+router.get(
+  "/activity",
+  dashboardController.getActivity
+);
 
-router.get("/top-clients", dashboardController.getTopClients);
+router.get(
+  "/deadlines",
+  dashboardController.getDeadlines
+);
+
+router.get(
+  "/top-clients",
+  dashboardController.getTopClients
+);
 
 export default router;
