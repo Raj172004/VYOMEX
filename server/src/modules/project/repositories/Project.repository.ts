@@ -53,9 +53,7 @@ class ProjectRepository extends BaseRepository<IProject> {
     });
   }
 
-  async searchProjects(
-    query: ProjectQueryDto
-  ) {
+  async searchProjects(query: ProjectQueryDto) {
     const {
       page = 1,
       limit = 10,
@@ -64,14 +62,14 @@ class ProjectRepository extends BaseRepository<IProject> {
       status,
       priority,
       sortBy = "createdAt",
-      order = "desc",
+      sortOrder = "desc",
     } = query;
 
     const pagination = QueryBuilder.build({
       page,
       limit,
       sortBy,
-      order,
+      order: sortOrder,
     });
 
     const searchFilter = SearchBuilder.build(

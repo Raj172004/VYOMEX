@@ -1,19 +1,16 @@
+import {
+  ProjectPriority,
+  ProjectStatus,
+} from "./CreateProject.dto";
+
 export interface UpdateProjectDto {
   title?: string;
-
   description?: string;
-
   client?: string;
-
-  status?: "planning" | "active" | "completed" | "on-hold";
-
-  priority?: "low" | "medium" | "high" | "critical";
-
+  status?: ProjectStatus;
+  priority?: ProjectPriority;
   budget?: number;
-
-  startDate?: Date;
-
-  endDate?: Date;
-
+  startDate?: string;
+  endDate?: string;
   assignedTo?: string[];
 }

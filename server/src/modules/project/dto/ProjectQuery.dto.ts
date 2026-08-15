@@ -1,9 +1,4 @@
-import { PaginationQueryDto } from "../../../common/dto/PaginationQuery.dto";
+import { ProjectQueryValidationDto } from "./Project.query.validation";
 
-export class ProjectQueryDto extends PaginationQueryDto {
-  client?: string;
-
-  status?: string;
-
-  priority?: string;
-}
+export type ProjectQueryDto =
+  ProjectQueryValidationDto;

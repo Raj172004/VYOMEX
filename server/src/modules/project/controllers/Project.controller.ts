@@ -6,6 +6,10 @@ import {
 
 import projectService from "../services/Project.service";
 
+import {
+  ProjectQueryDto,
+} from "../dto/ProjectQuery.dto";
+
 class ProjectController {
   async create(
     req: Request,
@@ -35,13 +39,14 @@ class ProjectController {
     next: NextFunction
   ) {
     try {
+      const query =
+        req.query as unknown as ProjectQueryDto;
+
       const hasQuery =
         Object.keys(req.query).length > 0;
 
       const projects = hasQuery
-        ? await projectService.searchProjects(
-            req.query as any
-          )
+        ? await projectService.searchProjects(query)
         : await projectService.getProjects();
 
       res.status(200).json({

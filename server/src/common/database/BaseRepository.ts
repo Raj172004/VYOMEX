@@ -1,4 +1,4 @@
-﻿import {
+import {
   Document,
   Model,
   PopulateOptions,
@@ -141,10 +141,7 @@ export class BaseRepository<T extends Document> {
     filter: Record<string, any>,
     page = 1,
     limit = 10,
-    sort: Record<
-      string,
-      1 | -1
-    > = {
+    sort: Record<string, 1 | -1> = {
       createdAt: -1,
     },
     populate?:
@@ -153,15 +150,33 @@ export class BaseRepository<T extends Document> {
       | PopulateOptions
       | PopulateOptions[]
   ) {
+    const normalizedPage = Math.max(
+      1,
+      Math.floor(
+        Number(page) || 1
+      )
+    );
+
+    const normalizedLimit = Math.min(
+      100,
+      Math.max(
+        1,
+        Math.floor(
+          Number(limit) || 10
+        )
+      )
+    );
+
     const skip =
-      (page - 1) * limit;
+      (normalizedPage - 1) *
+      normalizedLimit;
 
     let query: any =
       this.model
         .find(filter)
         .sort(sort)
         .skip(skip)
-        .limit(limit);
+        .limit(normalizedLimit);
 
     if (populate) {
       query = query.populate(
@@ -177,18 +192,25 @@ export class BaseRepository<T extends Document> {
         ),
       ]);
 
+    const totalPages =
+      total === 0
+        ? 0
+        : Math.ceil(
+            total / normalizedLimit
+          );
+
     return {
       data,
       total,
-      page,
-      limit,
-      totalPages: Math.ceil(
-        total / limit
-      ),
+      page: normalizedPage,
+      limit: normalizedLimit,
+      totalPages,
       hasNextPage:
-        page * limit < total,
+        normalizedPage <
+        totalPages,
       hasPreviousPage:
-        page > 1,
+        normalizedPage > 1 &&
+        total > 0,
     };
   }
 }
