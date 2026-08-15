@@ -1,14 +1,19 @@
+export interface ClientAddressDto {
+  street?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postalCode?: string;
+}
+
 export interface CreateClientDto {
-  firstName: string;
-  lastName: string;
-  company: string;
+  name: string;
+  company?: string;
   email: string;
   phone?: string;
   website?: string;
   industry?: string;
-  address?: string;
-  city?: string;
-  country?: string;
-  status?: "active" | "inactive";
+  status?: "active" | "inactive" | "lead";
   notes?: string;
+  address?: ClientAddressDto;
 }

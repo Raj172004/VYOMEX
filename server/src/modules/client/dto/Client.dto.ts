@@ -1,3 +1,11 @@
+export interface ClientAddressDto {
+  street?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postalCode?: string;
+}
+
 export interface CreateClientDto {
   name: string;
   company?: string;
@@ -7,13 +15,7 @@ export interface CreateClientDto {
   industry?: string;
   status?: "active" | "inactive" | "lead";
   notes?: string;
-  address?: {
-    street?: string;
-    city?: string;
-    state?: string;
-    country?: string;
-    postalCode?: string;
-  };
+  address?: ClientAddressDto;
 }
 
 export interface UpdateClientDto {
@@ -25,11 +27,5 @@ export interface UpdateClientDto {
   industry?: string;
   status?: "active" | "inactive" | "lead";
   notes?: string;
-  address?: {
-    street?: string;
-    city?: string;
-    state?: string;
-    country?: string;
-    postalCode?: string;
-  };
+  address?: ClientAddressDto;
 }
