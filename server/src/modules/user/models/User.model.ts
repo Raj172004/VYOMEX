@@ -9,6 +9,9 @@ export interface IUser extends Document {
   isVerified: boolean;
   role: "user" | "admin";
 
+  passwordResetToken?: string;
+  passwordResetExpiresAt?: Date;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -50,6 +53,16 @@ const userSchema = new Schema<IUser>(
       type: String,
       enum: ["user", "admin"],
       default: "user",
+    },
+
+    passwordResetToken: {
+      type: String,
+      select: false,
+    },
+
+    passwordResetExpiresAt: {
+      type: Date,
+      select: false,
     },
   },
   {

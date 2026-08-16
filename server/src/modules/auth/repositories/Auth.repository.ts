@@ -13,6 +13,55 @@ export class AuthRepository {
   }) {
     return User.create(data);
   }
+
+  async setPasswordResetToken(
+    userId: string,
+    token: string,
+    expiresAt: Date
+  ) {
+    return User.findByIdAndUpdate(
+      userId,
+      {
+        passwordResetToken: token,
+        passwordResetExpiresAt: expiresAt,
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+  }
+
+  async findByPasswordResetToken(token: string) {
+    return User.findOne({
+      passwordResetToken: token,
+      passwordResetExpiresAt: {
+        $gt: new Date(),
+      },
+    }).select(
+      "+passwordResetToken +passwordResetExpiresAt +password"
+    );
+  }
+
+  async updatePasswordAndClearResetToken(
+    userId: string,
+    hashedPassword: string
+  ) {
+    return User.findByIdAndUpdate(
+      userId,
+      {
+        password: hashedPassword,
+        $unset: {
+          passwordResetToken: 1,
+          passwordResetExpiresAt: 1,
+        },
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    ).select("+password");
+  }
 }
 
 export default new AuthRepository();
