@@ -6,6 +6,8 @@ import {
 
 import taskService from "../services/Task.service";
 
+import { writeAudit } from "../../audit/helpers/Audit.helper";
+
 class TaskController {
   async create(
     req: Request,
@@ -13,10 +15,33 @@ class TaskController {
     next: NextFunction
   ) {
     try {
+      const userId =
+        typeof req.user === "object" &&
+        req.user !== null &&
+        "_id" in req.user
+          ? String(
+              (req.user as { _id?: unknown })._id ?? ""
+            )
+          : "";
+
       const task = await taskService.createTask(
         req.body,
-        req.user!._id.toString()
+        userId
       );
+
+      await writeAudit({
+        req,
+        action: "CREATE",
+        entity: "Task",
+        entityId: task._id.toString(),
+        description: `Task "${task.title}" created`,
+        metadata: {
+          taskId: task._id.toString(),
+          title: task.title,
+          project: task.project?.toString(),
+          assignedTo: task.assignedTo?.toString(),
+        },
+      });
 
       res.status(201).json({
         success: true,
@@ -34,14 +59,7 @@ class TaskController {
     next: NextFunction
   ) {
     try {
-      const hasQuery =
-        Object.keys(req.query).length > 0;
-
-      const tasks = hasQuery
-        ? await taskService.searchTasks(
-            req.query as any
-          )
-        : await taskService.getTasks();
+      const tasks = await taskService.getTasks();
 
       res.status(200).json({
         success: true,
@@ -58,10 +76,9 @@ class TaskController {
     next: NextFunction
   ) {
     try {
-      const task =
-        await taskService.getTaskById(
-          req.params.id as string
-        );
+      const task = await taskService.getTaskById(
+        String(req.params.id)
+      );
 
       res.status(200).json({
         success: true,
@@ -78,11 +95,31 @@ class TaskController {
     next: NextFunction
   ) {
     try {
-      const task =
-        await taskService.updateTask(
-          req.params.id as string,
-          req.body
-        );
+      const task = await taskService.updateTask(
+        String(req.params.id),
+        req.body
+      );
+
+      const action =
+        req.body.status !== undefined
+          ? "STATUS_CHANGE"
+          : "UPDATE";
+
+      await writeAudit({
+        req,
+        action,
+        entity: "Task",
+        entityId: task._id.toString(),
+        description:
+          action === "STATUS_CHANGE"
+            ? `Task "${task.title}" status changed to "${task.status}"`
+            : `Task "${task.title}" updated`,
+        metadata: {
+          taskId: task._id.toString(),
+          changes: req.body,
+          status: task.status,
+        },
+      });
 
       res.status(200).json({
         success: true,
@@ -101,8 +138,19 @@ class TaskController {
   ) {
     try {
       await taskService.deleteTask(
-        req.params.id as string
+        String(req.params.id)
       );
+
+      await writeAudit({
+        req,
+        action: "DELETE",
+        entity: "Task",
+        entityId: String(req.params.id),
+        description: `Task "${req.params.id}" deleted`,
+        metadata: {
+          taskId: String(req.params.id),
+        },
+      });
 
       res.status(200).json({
         success: true,

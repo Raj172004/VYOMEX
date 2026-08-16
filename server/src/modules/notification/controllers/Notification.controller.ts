@@ -1,4 +1,4 @@
-﻿import {
+import {
   Request,
   Response,
   NextFunction,
@@ -7,6 +7,8 @@
 import notificationService from "../services/Notification.service";
 import { CreateNotificationDto } from "../dto/CreateNotification.dto";
 import { UpdateNotificationDto } from "../dto/UpdateNotification.dto";
+
+import { writeAudit } from "../../audit/helpers/Audit.helper";
 
 class NotificationController {
   async create(
@@ -24,14 +26,26 @@ class NotificationController {
         });
 
       const notification =
-        await notificationService.create(
-          createData
-        );
+        await notificationService.create(createData);
+
+      await writeAudit({
+        req,
+        action: "CREATE",
+        entity: "Notification",
+        entityId: notification._id.toString(),
+        description: `Notification "${notification.title}" created`,
+        metadata: {
+          notificationId:
+            notification._id.toString(),
+          title: notification.title,
+          type: notification.type,
+          user: notification.user?.toString(),
+        },
+      });
 
       return res.status(201).json({
         success: true,
-        message:
-          "Notification created successfully",
+        message: "Notification created successfully",
         data: notification,
       });
     } catch (error) {
@@ -143,10 +157,33 @@ class NotificationController {
           updateData
         );
 
+      const action =
+        req.body.isRead !== undefined
+          ? "STATUS_CHANGE"
+          : "UPDATE";
+
+      await writeAudit({
+        req,
+        action,
+        entity: "Notification",
+        entityId: notification._id.toString(),
+        description:
+          action === "STATUS_CHANGE"
+            ? `Notification "${notification.title}" read status changed to "${notification.isRead}"`
+            : `Notification "${notification.title}" updated`,
+        metadata: {
+          notificationId:
+            notification._id.toString(),
+          title: notification.title,
+          type: notification.type,
+          isRead: notification.isRead,
+          changes: req.body,
+        },
+      });
+
       return res.status(200).json({
         success: true,
-        message:
-          "Notification updated successfully",
+        message: "Notification updated successfully",
         data: notification,
       });
     } catch (error) {
@@ -166,10 +203,24 @@ class NotificationController {
           req.user!._id.toString()
         );
 
+      await writeAudit({
+        req,
+        action: "STATUS_CHANGE",
+        entity: "Notification",
+        entityId: notification._id.toString(),
+        description:
+          `Notification "${notification.title}" marked as read`,
+        metadata: {
+          notificationId:
+            notification._id.toString(),
+          title: notification.title,
+          isRead: notification.isRead,
+        },
+      });
+
       return res.status(200).json({
         success: true,
-        message:
-          "Notification marked as read",
+        message: "Notification marked as read",
         data: notification,
       });
     } catch (error) {
@@ -190,10 +241,20 @@ class NotificationController {
         authenticatedUserId
       );
 
+      await writeAudit({
+        req,
+        action: "STATUS_CHANGE",
+        entity: "Notification",
+        description:
+          "All notifications marked as read",
+        metadata: {
+          userId: authenticatedUserId,
+        },
+      });
+
       return res.status(200).json({
         success: true,
-        message:
-          "All notifications marked as read",
+        message: "All notifications marked as read",
       });
     } catch (error) {
       next(error);
@@ -242,15 +303,30 @@ class NotificationController {
     next: NextFunction
   ) {
     try {
-      await notificationService.delete(
-        String(req.params.id),
-        req.user!._id.toString()
-      );
+      const notification =
+        await notificationService.delete(
+          String(req.params.id),
+          req.user!._id.toString()
+        );
+
+      await writeAudit({
+        req,
+        action: "DELETE",
+        entity: "Notification",
+        entityId: notification._id.toString(),
+        description:
+          `Notification "${notification.title}" deleted`,
+        metadata: {
+          notificationId:
+            notification._id.toString(),
+          title: notification.title,
+          type: notification.type,
+        },
+      });
 
       return res.status(200).json({
         success: true,
-        message:
-          "Notification deleted successfully",
+        message: "Notification deleted successfully",
       });
     } catch (error) {
       next(error);

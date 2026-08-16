@@ -6,6 +6,8 @@ import {
 
 import { invoiceService } from "../services/Invoice.service";
 
+import { writeAudit } from "../../audit/helpers/Audit.helper";
+
 export class InvoiceController {
   async createInvoice(
     req: Request,
@@ -20,6 +22,22 @@ export class InvoiceController {
           req.body,
           createdBy
         );
+
+      await writeAudit({
+        req,
+        action: "CREATE",
+        entity: "Invoice",
+        entityId: invoice._id.toString(),
+        description: `Invoice "${invoice.invoiceNumber}" created`,
+        metadata: {
+          invoiceId: invoice._id.toString(),
+          invoiceNumber: invoice.invoiceNumber,
+          client: invoice.client?.toString(),
+          project: invoice.project?.toString(),
+          total: invoice.total,
+          status: invoice.status,
+        },
+      });
 
       return res.status(201).json({
         success: true,
@@ -87,6 +105,36 @@ export class InvoiceController {
           req.body
         );
 
+      if (!invoice) {
+        return res.status(404).json({
+          success: false,
+          message: "Invoice not found.",
+        });
+      }
+
+      const action =
+        req.body.status !== undefined
+          ? "STATUS_CHANGE"
+          : "UPDATE";
+
+      await writeAudit({
+        req,
+        action,
+        entity: "Invoice",
+        entityId: invoice._id.toString(),
+        description:
+          action === "STATUS_CHANGE"
+            ? `Invoice "${invoice.invoiceNumber}" status changed to "${invoice.status}"`
+            : `Invoice "${invoice.invoiceNumber}" updated`,
+        metadata: {
+          invoiceId: invoice._id.toString(),
+          invoiceNumber: invoice.invoiceNumber,
+          changes: req.body,
+          status: invoice.status,
+          total: invoice.total,
+        },
+      });
+
       return res.status(200).json({
         success: true,
         message: "Invoice updated successfully.",
@@ -103,9 +151,37 @@ export class InvoiceController {
     next: NextFunction
   ) {
     try {
+      const invoiceId =
+        req.params.id as string;
+
+      const invoice =
+        await invoiceService.getInvoiceById(
+          invoiceId
+        );
+
+      if (!invoice) {
+        return res.status(404).json({
+          success: false,
+          message: "Invoice not found.",
+        });
+      }
+
       await invoiceService.deleteInvoice(
-        req.params.id as string
+        invoiceId
       );
+
+      await writeAudit({
+        req,
+        action: "DELETE",
+        entity: "Invoice",
+        entityId: invoiceId,
+        description: `Invoice "${invoice.invoiceNumber}" deleted`,
+        metadata: {
+          invoiceId,
+          invoiceNumber:
+            invoice.invoiceNumber,
+        },
+      });
 
       return res.status(200).json({
         success: true,

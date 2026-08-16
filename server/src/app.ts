@@ -8,8 +8,17 @@ import path from "path";
 
 import routes from "./routes";
 import { errorMiddleware } from "./middleware/error.middleware";
+import { apiRateLimiter } from "./middleware/rate-limiters/api.rate-limiter";
 
 const app = express();
+
+/**
+ * =========================================================
+ * PROXY
+ * =========================================================
+ */
+
+app.set("trust proxy", 1);
 
 /**
  * =========================================================
@@ -21,7 +30,14 @@ app.use(
   cors({
     origin: "http://localhost:3000",
     credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    methods: [
+      "GET",
+      "POST",
+      "PUT",
+      "PATCH",
+      "DELETE",
+      "OPTIONS",
+    ],
     allowedHeaders: [
       "Content-Type",
       "Authorization",
@@ -32,25 +48,56 @@ app.use(
 
 /**
  * =========================================================
- * GLOBAL MIDDLEWARES
+ * SECURITY MIDDLEWARE
  * =========================================================
  */
 
 app.use(helmet());
 
+/**
+ * =========================================================
+ * PERFORMANCE
+ * =========================================================
+ */
+
 app.use(compression());
 
-app.use(express.json());
+/**
+ * =========================================================
+ * REQUEST LIMITS
+ * =========================================================
+ */
+
+app.use(
+  express.json({
+    limit: "1mb",
+  })
+);
 
 app.use(
   express.urlencoded({
     extended: true,
+    limit: "1mb",
   })
 );
+
+/**
+ * =========================================================
+ * COOKIES / LOGGING
+ * =========================================================
+ */
 
 app.use(cookieParser());
 
 app.use(morgan("dev"));
+
+/**
+ * =========================================================
+ * GLOBAL API RATE LIMIT
+ * =========================================================
+ */
+
+app.use("/api", apiRateLimiter);
 
 /**
  * =========================================================

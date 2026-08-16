@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from "express";
 
 import userService from "../services/User.service";
 
+import { writeAudit } from "../../audit/helpers/Audit.helper";
+
 export const getAll = async (
   req: Request,
   res: Response,
@@ -49,6 +51,24 @@ export const update = async (
       req.body
     );
 
+    await writeAudit({
+      req,
+      action: "UPDATE",
+      entity: "User",
+      entityId: user._id.toString(),
+      description:
+        req.body.role !== undefined
+          ? `User "${user.email}" updated, role changed to "${user.role}"`
+          : `User "${user.email}" updated`,
+      metadata: {
+        userId: user._id.toString(),
+        email: user.email,
+        changes: req.body,
+        role: user.role,
+        isVerified: user.isVerified,
+      },
+    });
+
     res.status(200).json({
       success: true,
       message: "User updated successfully",
@@ -65,9 +85,28 @@ export const remove = async (
   next: NextFunction
 ) => {
   try {
-    const result = await userService.deleteUser(
-      req.params.id as string
+    const userId = req.params.id as string;
+
+    const user = await userService.getUserById(
+      userId
     );
+
+    const result = await userService.deleteUser(
+      userId
+    );
+
+    await writeAudit({
+      req,
+      action: "DELETE",
+      entity: "User",
+      entityId: userId,
+      description: `User "${user.email}" deleted`,
+      metadata: {
+        userId,
+        email: user.email,
+        role: user.role,
+      },
+    });
 
     res.status(200).json({
       success: true,

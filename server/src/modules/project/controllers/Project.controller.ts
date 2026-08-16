@@ -10,6 +10,8 @@ import {
   ProjectQueryDto,
 } from "../dto/ProjectQuery.dto";
 
+import { writeAudit } from "../../audit/helpers/Audit.helper";
+
 class ProjectController {
   async create(
     req: Request,
@@ -22,6 +24,18 @@ class ProjectController {
           req.body,
           req.user!._id.toString()
         );
+
+      await writeAudit({
+        req,
+        action: "CREATE",
+        entity: "Project",
+        entityId: project._id.toString(),
+        description: `Project "${project.title}" created`,
+        metadata: {
+          projectId: project._id.toString(),
+          title: project.title,
+        },
+      });
 
       res.status(201).json({
         success: true,
@@ -90,6 +104,18 @@ class ProjectController {
           req.body
         );
 
+      await writeAudit({
+        req,
+        action: "UPDATE",
+        entity: "Project",
+        entityId: project._id.toString(),
+        description: `Project "${project.title}" updated`,
+        metadata: {
+          projectId: project._id.toString(),
+          changes: req.body,
+        },
+      });
+
       res.status(200).json({
         success: true,
         message: "Project updated successfully",
@@ -106,9 +132,22 @@ class ProjectController {
     next: NextFunction
   ) {
     try {
-      await projectService.deleteProject(
-        req.params.id as string
-      );
+      const project =
+        await projectService.deleteProject(
+          req.params.id as string
+        );
+
+      await writeAudit({
+        req,
+        action: "DELETE",
+        entity: "Project",
+        entityId: project._id.toString(),
+        description: `Project "${project.title}" deleted`,
+        metadata: {
+          projectId: project._id.toString(),
+          title: project.title,
+        },
+      });
 
       res.status(200).json({
         success: true,
