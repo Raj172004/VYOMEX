@@ -1,23 +1,39 @@
 import { z } from "zod";
 
+const objectIdRegex = /^[a-fA-F0-9]{24}$/;
+
+const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+
 export const updateProjectSchema = z.object({
   title: z
     .string()
     .trim()
-    .min(1, "Project title cannot be empty")
-    .max(150, "Project title cannot exceed 150 characters")
+    .min(
+      1,
+      "Project title cannot be empty"
+    )
+    .max(
+      150,
+      "Project title cannot exceed 150 characters"
+    )
     .optional(),
 
   description: z
     .string()
     .trim()
-    .max(2000, "Project description cannot exceed 2000 characters")
+    .max(
+      2000,
+      "Project description cannot exceed 2000 characters"
+    )
     .optional(),
 
   client: z
     .string()
     .trim()
-    .min(1, "Client ID cannot be empty")
+    .regex(
+      objectIdRegex,
+      "Invalid client ID"
+    )
     .optional(),
 
   status: z
@@ -40,23 +56,37 @@ export const updateProjectSchema = z.object({
 
   budget: z
     .number()
+    .finite("Budget must be a valid number")
     .nonnegative("Budget cannot be negative")
     .optional(),
 
   startDate: z
     .string()
-    .min(1, "Start date cannot be empty")
+    .trim()
+    .regex(
+      dateRegex,
+      "Start date must use YYYY-MM-DD format"
+    )
     .optional(),
 
   endDate: z
     .string()
-    .min(1, "End date cannot be empty")
+    .trim()
+    .regex(
+      dateRegex,
+      "End date must use YYYY-MM-DD format"
+    )
     .optional(),
 
   assignedTo: z
-    .array(z.string().min(1))
+    .array(
+      z
+        .string()
+        .trim()
+        .regex(
+          objectIdRegex,
+          "Invalid assigned user ID"
+        )
+    )
     .optional(),
 });
-
-export type UpdateProjectValidationDto =
-  z.infer<typeof updateProjectSchema>;

@@ -1,22 +1,35 @@
 import { z } from "zod";
 
+const objectIdRegex = /^[a-fA-F0-9]{24}$/;
+
+const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+
 export const createProjectSchema = z.object({
   title: z
     .string()
     .trim()
     .min(1, "Project title is required")
-    .max(150, "Project title cannot exceed 150 characters"),
+    .max(
+      150,
+      "Project title cannot exceed 150 characters"
+    ),
 
   description: z
     .string()
     .trim()
-    .max(2000, "Project description cannot exceed 2000 characters")
+    .max(
+      2000,
+      "Project description cannot exceed 2000 characters"
+    )
     .optional(),
 
   client: z
     .string()
     .trim()
-    .min(1, "Client ID is required"),
+    .regex(
+      objectIdRegex,
+      "Invalid client ID"
+    ),
 
   status: z
     .enum([
@@ -38,21 +51,35 @@ export const createProjectSchema = z.object({
 
   budget: z
     .number()
+    .finite("Budget must be a valid number")
     .nonnegative("Budget cannot be negative")
     .optional(),
 
   startDate: z
     .string()
-    .min(1, "Start date is required"),
+    .trim()
+    .regex(
+      dateRegex,
+      "Start date must use YYYY-MM-DD format"
+    ),
 
   endDate: z
     .string()
-    .min(1, "End date is required"),
+    .trim()
+    .regex(
+      dateRegex,
+      "End date must use YYYY-MM-DD format"
+    ),
 
   assignedTo: z
-    .array(z.string().min(1))
+    .array(
+      z
+        .string()
+        .trim()
+        .regex(
+          objectIdRegex,
+          "Invalid assigned user ID"
+        )
+    )
     .optional(),
 });
-
-export type CreateProjectValidationDto =
-  z.infer<typeof createProjectSchema>;
