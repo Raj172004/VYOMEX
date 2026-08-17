@@ -12,40 +12,147 @@ import { ResetPasswordDto } from "../dto/ResetPassword.dto";
 import { ApiError } from "../../../utils/ApiError";
 import { env } from "../../../config/env";
 
-import mailService from "../../../services/Mail.service";
+import mailService from "../../../services/mailer/Mailer.service";
+
+import {
+  getPasswordResetExpiry,
+} from "../../../utils/password-reset";
+
+import {
+  isDemoMode,
+} from "../../../common/data/DataMode";
+
+import demoAuthProvider from "../../../common/data/providers/demo/DemoAuth.provider";
 
 class AuthService {
+
   async register(data: RegisterDto) {
+
+    if (isDemoMode()) {
+      throw new ApiError(
+        400,
+        "Registration is disabled in demo mode"
+      );
+    }
+
     const existingUser =
-      await authRepository.findByEmail(data.email);
+      await authRepository.findByEmail(
+        data.email
+      );
 
     if (existingUser) {
-      throw new ApiError(409, "Email already exists");
+      throw new ApiError(
+        409,
+        "Email already exists"
+      );
     }
 
     const hashedPassword =
-      await bcrypt.hash(data.password, 12);
+      await bcrypt.hash(
+        data.password,
+        12
+      );
 
-    const user = await authRepository.create({
-      firstName: data.firstName,
-      lastName: data.lastName,
-      email: data.email,
-      password: hashedPassword,
-    });
+    const user =
+      await authRepository.create({
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        password: hashedPassword,
+      });
 
-    const userObject = user.toObject();
+    const userObject =
+      user.toObject();
 
-    const { password, ...safeUser } = userObject;
+    const {
+      password,
+      ...safeUser
+    } = userObject;
 
     return safeUser;
   }
 
   async login(data: LoginDto) {
+
+    /*
+     * DEMO MODE
+     *
+     * Authentication uses the in-memory
+     * DemoAuthProvider.
+     *
+     * No MongoDB user is required.
+     */
+    if (isDemoMode()) {
+
+      const user =
+        await demoAuthProvider.findByEmail(
+          data.email
+        );
+
+      if (!user) {
+        throw new ApiError(
+          401,
+          "Invalid credentials"
+        );
+      }
+
+      const passwordMatch =
+        await demoAuthProvider.verifyPassword(
+          user,
+          data.password
+        );
+
+      if (!passwordMatch) {
+        throw new ApiError(
+          401,
+          "Invalid credentials"
+        );
+      }
+
+      if (!user.isActive) {
+        throw new ApiError(
+          403,
+          "Account is inactive"
+        );
+      }
+
+      const accessToken =
+        jwt.sign(
+          {
+            id: user._id,
+            email: user.email,
+            role: user.role,
+          },
+          env.JWT_SECRET,
+          {
+            expiresIn: "15m",
+          }
+        );
+
+      return {
+        user:
+          demoAuthProvider.toSafeUser(
+            user
+          ),
+        accessToken,
+      };
+    }
+
+    /*
+     * PRODUCTION MODE
+     *
+     * Authentication uses MongoDB.
+     */
     const user =
-      await authRepository.findByEmail(data.email);
+      await authRepository.findByEmail(
+        data.email
+      );
 
     if (!user) {
-      throw new ApiError(401, "Invalid credentials");
+      throw new ApiError(
+        401,
+        "Invalid credentials"
+      );
     }
 
     const passwordMatch =
@@ -55,23 +162,39 @@ class AuthService {
       );
 
     if (!passwordMatch) {
-      throw new ApiError(401, "Invalid credentials");
+      throw new ApiError(
+        401,
+        "Invalid credentials"
+      );
     }
 
-    const accessToken = jwt.sign(
-      {
-        id: user._id,
-        role: user.role,
-      },
-      env.JWT_SECRET,
-      {
-        expiresIn: "15m",
-      }
-    );
+    if (!user.isActive) {
+      throw new ApiError(
+        403,
+        "Account is inactive"
+      );
+    }
 
-    const userObject = user.toObject();
+    const accessToken =
+      jwt.sign(
+        {
+          id: user._id,
+          email: user.email,
+          role: user.role,
+        },
+        env.JWT_SECRET,
+        {
+          expiresIn: "15m",
+        }
+      );
 
-    const { password, ...safeUser } = userObject;
+    const userObject =
+      user.toObject();
+
+    const {
+      password,
+      ...safeUser
+    } = userObject;
 
     return {
       user: safeUser,
@@ -82,15 +205,42 @@ class AuthService {
   async forgotPassword(
     data: ForgotPasswordDto
   ) {
+
+    /*
+     * Password reset will be connected
+     * to the demo data provider separately.
+     *
+     * For now demo mode does not require
+     * real Gmail/SMTP.
+     */
+    if (isDemoMode()) {
+
+      console.log("");
+      console.log(
+        "========== DEMO PASSWORD RESET =========="
+      );
+      console.log(
+        `[DEMO] Password reset requested for: ${data.email}`
+      );
+      console.log(
+        "[DEMO] Real email delivery is disabled."
+      );
+      console.log(
+        "[DEMO] Use demo authentication while development continues."
+      );
+      console.log(
+        "=========================================="
+      );
+      console.log("");
+
+      return;
+    }
+
     const user =
       await authRepository.findByEmail(
         data.email
       );
 
-    /*
-     * Always return the same public result
-     * whether the account exists or not.
-     */
     if (!user) {
       return;
     }
@@ -99,25 +249,81 @@ class AuthService {
       crypto.randomBytes(32).toString("hex");
 
     const expiresAt =
-      new Date(
-        Date.now() + 15 * 60 * 1000
+      getPasswordResetExpiry(
+        env.PASSWORD_RESET_EXPIRES_IN
       );
 
     await authRepository.setPasswordResetToken(
-      data.email,
+      user._id.toString(),
       resetToken,
       expiresAt
     );
 
-    await mailService.sendPasswordResetEmail(
-      data.email,
-      resetToken
-    );
+    const resetUrl =
+      `${env.CLIENT_URL}/reset-password?token=${encodeURIComponent(
+        resetToken
+      )}`;
+
+    if (env.NODE_ENV !== "production") {
+
+      console.log("");
+      console.log(
+        "========== DEV PASSWORD RESET =========="
+      );
+
+      console.log(
+        `[DEV] Password reset token: ${resetToken}`
+      );
+
+      console.log(
+        `[DEV] Password reset URL: ${resetUrl}`
+      );
+
+      console.log(
+        `[DEV] Password reset expires: ${expiresAt.toISOString()}`
+      );
+
+      console.log(
+        "========================================="
+      );
+
+      console.log("");
+    }
+
+    if (
+      env.MAIL_HOST &&
+      env.MAIL_USER &&
+      env.MAIL_PASSWORD &&
+      env.MAIL_FROM
+    ) {
+
+      await mailService.sendPasswordResetEmail(
+        data.email,
+        resetUrl
+      );
+
+    } else if (
+      env.NODE_ENV === "production"
+    ) {
+
+      throw new ApiError(
+        500,
+        "Mail service is not configured"
+      );
+    }
   }
 
   async resetPassword(
     data: ResetPasswordDto
   ) {
+
+    if (isDemoMode()) {
+      throw new ApiError(
+        400,
+        "Password reset is disabled in demo mode"
+      );
+    }
+
     const user =
       await authRepository.findByPasswordResetToken(
         data.token
@@ -131,7 +337,10 @@ class AuthService {
     }
 
     const hashedPassword =
-      await bcrypt.hash(data.password, 12);
+      await bcrypt.hash(
+        data.password,
+        12
+      );
 
     await authRepository.updatePasswordAndClearResetToken(
       user._id.toString(),

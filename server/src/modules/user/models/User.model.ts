@@ -1,4 +1,8 @@
-import { Schema, model, Document } from "mongoose";
+import {
+  Schema,
+  model,
+  Document,
+} from "mongoose";
 
 export interface IUser extends Document {
   firstName: string;
@@ -7,6 +11,8 @@ export interface IUser extends Document {
   password: string;
 
   isVerified: boolean;
+  isActive: boolean;
+
   role: "user" | "admin";
 
   passwordResetToken?: string;
@@ -49,6 +55,11 @@ const userSchema = new Schema<IUser>(
       default: false,
     },
 
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+
     role: {
       type: String,
       enum: ["user", "admin"],
@@ -70,4 +81,7 @@ const userSchema = new Schema<IUser>(
   }
 );
 
-export const User = model<IUser>("User", userSchema);
+export const User = model<IUser>(
+  "User",
+  userSchema
+);

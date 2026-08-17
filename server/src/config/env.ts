@@ -11,6 +11,9 @@ export const env = {
     process.env.CLIENT_URL ??
     "http://localhost:3000",
 
+  DATA_MODE:
+    process.env.DATA_MODE ?? "demo",
+
   MONGODB_URI:
     process.env.MONGODB_URI ??
     "mongodb://127.0.0.1:27017/vyomex",
