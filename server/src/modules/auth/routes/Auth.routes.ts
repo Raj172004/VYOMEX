@@ -1,4 +1,4 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 
 import authController from "../controllers/Auth.controller";
 import { getProfile } from "../controllers/Profile.controller";
@@ -39,6 +39,17 @@ router.post(
   loginRateLimiter,
   validate(loginSchema),
   authController.login.bind(authController)
+);
+
+router.post(
+  "/refresh",
+  loginRateLimiter,
+  authController.refresh.bind(authController)
+);
+
+router.post(
+  "/logout",
+  authController.logout.bind(authController)
 );
 
 router.post(

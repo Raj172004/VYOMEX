@@ -1,43 +1,50 @@
-﻿import mongoose from "mongoose";
+import { Request } from "express";
 
 import auditService from "../services/Audit.service";
 import { AuditAction } from "../models/Audit.model";
 
 interface WriteAuditParams {
+  req: Request;
   action: AuditAction;
   entity: string;
   entityId?: string;
-  actor?: string;
   description: string;
   metadata?: Record<string, unknown>;
 }
 
 /**
- * Best-effort audit persistence.
+ * Best-effort audit writer.
  *
- * Audit logging must never block the primary request when
- * MongoDB is unavailable or disconnected.
+ * Audit persistence must never break the primary business operation.
+ * Any audit persistence failure is logged and intentionally swallowed.
  */
 export const writeAudit = async ({
+  req,
   action,
   entity,
   entityId,
-  actor,
   description,
   metadata,
 }: WriteAuditParams): Promise<void> => {
-  if (mongoose.connection.readyState !== 1) {
-    return;
-  }
+  const actor = req.user?._id
+    ? req.user._id.toString()
+    : undefined;
 
   try {
     await auditService.create({
+      actor,
       action,
       entity,
       entityId,
-      actor,
       description,
       metadata,
+      ipAddress:
+        req.ip ||
+        req.socket.remoteAddress ||
+        undefined,
+      userAgent:
+        req.get("user-agent") ||
+        undefined,
     });
   } catch (error) {
     console.error(

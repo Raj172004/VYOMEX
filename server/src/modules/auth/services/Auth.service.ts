@@ -1,4 +1,4 @@
-import bcrypt from "bcrypt";
+﻿import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 
@@ -24,7 +24,57 @@ import {
 
 import demoAuthProvider from "../../../common/data/providers/demo/DemoAuth.provider";
 
+import {
+  createRefreshToken,
+} from "./RefreshToken.service";
+
+interface AuthTokenUser {
+  _id: string;
+  email: string;
+  role: string;
+}
+
 class AuthService {
+
+  private createAccessToken(
+    user: AuthTokenUser
+  ): string {
+    return jwt.sign(
+      {
+        id: user._id,
+        email: user.email,
+        role: user.role,
+      },
+      env.JWT_SECRET,
+      {
+        expiresIn:
+          env.JWT_EXPIRES_IN as jwt.SignOptions["expiresIn"],
+      }
+    );
+  }
+
+  createAccessTokenFromRefresh(
+    payload: {
+      id: string;
+      email: string;
+      role: string;
+    }
+  ): string {
+    return this.createAccessToken({
+      _id: payload.id,
+      email: payload.email,
+      role: payload.role,
+    });
+  }
+  private createRefreshTokenForUser(
+    user: AuthTokenUser
+  ): string {
+    return createRefreshToken({
+      id: user._id,
+      email: user.email,
+      role: user.role,
+    });
+  }
 
   async register(data: RegisterDto) {
 
@@ -116,17 +166,20 @@ class AuthService {
         );
       }
 
+      const tokenUser: AuthTokenUser = {
+        _id: user._id,
+        email: user.email,
+        role: user.role,
+      };
+
       const accessToken =
-        jwt.sign(
-          {
-            id: user._id,
-            email: user.email,
-            role: user.role,
-          },
-          env.JWT_SECRET,
-          {
-            expiresIn: "15m",
-          }
+        this.createAccessToken(
+          tokenUser
+        );
+
+      const refreshToken =
+        this.createRefreshTokenForUser(
+          tokenUser
         );
 
       return {
@@ -135,6 +188,7 @@ class AuthService {
             user
           ),
         accessToken,
+        refreshToken,
       };
     }
 
@@ -175,17 +229,20 @@ class AuthService {
       );
     }
 
+    const tokenUser: AuthTokenUser = {
+      _id: user._id.toString(),
+      email: user.email,
+      role: user.role,
+    };
+
     const accessToken =
-      jwt.sign(
-        {
-          id: user._id,
-          email: user.email,
-          role: user.role,
-        },
-        env.JWT_SECRET,
-        {
-          expiresIn: "15m",
-        }
+      this.createAccessToken(
+        tokenUser
+      );
+
+    const refreshToken =
+      this.createRefreshTokenForUser(
+        tokenUser
       );
 
     const userObject =
@@ -199,6 +256,7 @@ class AuthService {
     return {
       user: safeUser,
       accessToken,
+      refreshToken,
     };
   }
 
@@ -206,13 +264,6 @@ class AuthService {
     data: ForgotPasswordDto
   ) {
 
-    /*
-     * Password reset will be connected
-     * to the demo data provider separately.
-     *
-     * For now demo mode does not require
-     * real Gmail/SMTP.
-     */
     if (isDemoMode()) {
 
       console.log("");
@@ -350,3 +401,5 @@ class AuthService {
 }
 
 export default new AuthService();
+
+
