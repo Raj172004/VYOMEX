@@ -10,10 +10,17 @@ import {
 
 import demoUserProvider from "../../../common/data/providers/demo/DemoUser.provider";
 
+interface UserUpdateData {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  isVerified?: boolean;
+  isActive?: boolean;
+  role?: "user" | "admin";
+}
+
 class UserService {
-
   async getAllUsers() {
-
     if (isDemoMode()) {
       return demoUserProvider.getAllUsers();
     }
@@ -22,7 +29,6 @@ class UserService {
   }
 
   async getUserById(id: string) {
-
     if (isDemoMode()) {
       const user =
         demoUserProvider.getUserById(id);
@@ -52,9 +58,9 @@ class UserService {
 
   async updateUser(
     id: string,
-    data: Partial<IUser>
+    data: UserUpdateData,
+    requesterRole: string
   ) {
-
     if (isDemoMode()) {
       throw new ApiError(
         400,
@@ -62,10 +68,61 @@ class UserService {
       );
     }
 
+    const allowedFields: Partial<IUser> = {};
+
+    if (data.firstName !== undefined) {
+      allowedFields.firstName =
+        data.firstName;
+    }
+
+    if (data.lastName !== undefined) {
+      allowedFields.lastName =
+        data.lastName;
+    }
+
+    if (data.email !== undefined) {
+      allowedFields.email =
+        data.email;
+    }
+
+    /**
+     * Privileged fields are admin-only.
+     */
+    if (requesterRole === "admin") {
+      if (data.isVerified !== undefined) {
+        allowedFields.isVerified =
+          data.isVerified;
+      }
+
+      if (data.isActive !== undefined) {
+        allowedFields.isActive =
+          data.isActive;
+      }
+
+      if (data.role !== undefined) {
+        allowedFields.role =
+          data.role;
+      }
+    } else {
+      /**
+       * Prevent privilege escalation attempts.
+       */
+      if (
+        data.isVerified !== undefined ||
+        data.isActive !== undefined ||
+        data.role !== undefined
+      ) {
+        throw new ApiError(
+          403,
+          "You are not allowed to modify privileged user fields"
+        );
+      }
+    }
+
     const user =
       await userRepository.updateUser(
         id,
-        data
+        allowedFields
       );
 
     if (!user) {
@@ -79,7 +136,6 @@ class UserService {
   }
 
   async deleteUser(id: string) {
-
     if (isDemoMode()) {
       throw new ApiError(
         400,

@@ -46,10 +46,18 @@ export const update = async (
   next: NextFunction
 ) => {
   try {
-    const user = await userService.updateUser(
-      req.params.id as string,
-      req.body
-    );
+    if (!req.user) {
+      return next(
+        new Error("Authenticated user is missing")
+      );
+    }
+
+    const user =
+      await userService.updateUser(
+        req.params.id as string,
+        req.body,
+        req.user.role
+      );
 
     await writeAudit({
       req,
@@ -87,20 +95,23 @@ export const remove = async (
   try {
     const userId = req.params.id as string;
 
-    const user = await userService.getUserById(
-      userId
-    );
+    const user =
+      await userService.getUserById(
+        userId
+      );
 
-    const result = await userService.deleteUser(
-      userId
-    );
+    const result =
+      await userService.deleteUser(
+        userId
+      );
 
     await writeAudit({
       req,
       action: "DELETE",
       entity: "User",
       entityId: userId,
-      description: `User "${user.email}" deleted`,
+      description:
+        `User "${user.email}" deleted`,
       metadata: {
         userId,
         email: user.email,
